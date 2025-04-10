@@ -319,6 +319,7 @@
     </div>
 
     <!-- Nút gửi đến LED Matrix -->
+    <button onclick="connectToSerial()">Connect to Serial</button>
     <button onclick="sendToLedMatrix()">Send to LED Matrix</button>
   </div>
 
@@ -419,7 +420,6 @@
       const endTimeInput = document.getElementById('endTime').value;
 
       if (!endDateInput || !endTimeInput) {
-        // Nếu không có ngày giờ được chọn, không chạy đếm ngược
         isCountingDown = false;
         document.getElementById('days').childNodes[0].textContent = '00';
         document.getElementById('hours').childNodes[0].textContent = '00';
@@ -462,16 +462,42 @@
     document.getElementById('endDate').addEventListener('change', startCountdown);
     document.getElementById('endTime').addEventListener('change', startCountdown);
 
-    // Hàm gửi dữ liệu đến LED Matrix
+    // Web Serial API để gửi dữ liệu qua Serial
+    let port;
+    let writer;
+
+    async function connectToSerial() {
+      if (!navigator.serial) {
+        alert('Web Serial API không được hỗ trợ trên trình duyệt này. Vui lòng sử dụng Chrome hoặc Edge.');
+        return;
+      }
+
+      try {
+        // Yêu cầu người dùng chọn cổng Serial
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+
+        // Tạo writer để gửi dữ liệu
+        writer = port.writable.getWriter();
+        alert('Kết nối Serial thành công!');
+      } catch (error) {
+        console.error('Error connecting to Serial:', error);
+        alert('Không thể kết nối với Serial: ' + error.message);
+      }
+    }
+
     async function sendToLedMatrix() {
+      if (!port || !writer) {
+        alert('Vui lòng kết nối với Serial trước!');
+        return;
+      }
+
       let message;
 
       if (!isCountingDown) {
-        // Nếu không có đếm ngược, gửi thời gian hiện tại
         const currentTime = document.getElementById('currentTime').textContent;
         message = `Current Time: ${currentTime}`;
       } else {
-        // Nếu có đếm ngược, gửi thời gian đếm ngược
         const days = document.getElementById('days').childNodes[0].textContent;
         const hours = document.getElementById('hours').childNodes[0].textContent;
         const minutes = document.getElementById('minutes').childNodes[0].textContent;
@@ -479,26 +505,14 @@
         message = `Countdown: ${days}d ${hours}h ${minutes}m ${seconds}s`;
       }
 
-      // Gửi dữ liệu đến LED Matrix qua API
-      const url = 'https://5465-2402-800-629c-60bc-1f6-27ea-f789-1a94.ngrok-free.app/update';
-      const data = `text=${encodeURIComponent(message)}&speed=50&effect=scroll-left&brightness=2&blink=off&blinkInterval=500`;
-
       try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: data
-        });
-
-        if (response.ok) {
-          alert('Data sent to LED Matrix successfully!');
-        } else {
-          throw new Error(`Server error: ${response.status}`);
-        }
+        // Gửi dữ liệu qua Serial
+        const encoder = new TextEncoder();
+        await writer.write(encoder.encode(message + '\n'));
+        alert('Dữ liệu đã được gửi đến LED Matrix!');
       } catch (error) {
-        alert(`Failed to send data: ${error.message}`);
+        console.error('Error sending data:', error);
+        alert('Không thể gửi dữ liệu: ' + error.message);
       }
     }
 
