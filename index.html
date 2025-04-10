@@ -496,19 +496,17 @@
       
         if (!isCountingDown) {
           const currentTime = document.getElementById('currentTime').textContent;
-          message = `Time: ${currentTime}`;
+          message = `Current Time: ${currentTime}`; // Sửa thành "Current Time:"
         } else {
           const days = document.getElementById('days').childNodes[0].textContent;
           const hours = document.getElementById('hours').childNodes[0].textContent;
           const minutes = document.getElementById('minutes').childNodes[0].textContent;
           const seconds = document.getElementById('seconds').childNodes[0].textContent;
-          message = `Time: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+          message = `Countdown: ${days}d ${hours}h ${minutes}m ${seconds}s`; // Sửa thành "Countdown:"
         }
       
         try {
-          // Log dữ liệu trước khi gửi
           console.log('Sending to Serial:', message);
-          // Gửi dữ liệu qua Serial
           const encoder = new TextEncoder();
           await writer.write(encoder.encode(message + '\n'));
           alert('Dữ liệu đã được gửi đến LED Matrix!');
