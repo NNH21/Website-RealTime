@@ -603,7 +603,7 @@ updateCurrentTime();
       const time = now.toLocaleTimeString('en-US', { hour12: false }); // Định dạng HH:MM:SS
       const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const timeMessage = `SET_TIME:${date} ${time}`; // Đồng bộ RTC
-      const displayMessage = `Current Time: ${time}`; // Hiển thị trên LED
+      const displayMessage = `Current Time: ${time}`; // Hiển thị đầy đủ HH:MM:SS trên LED
     
       try {
         const encoder = new TextEncoder();
@@ -615,7 +615,7 @@ updateCurrentTime();
         console.error('Lỗi gửi thời gian tự động:', error);
       }
     }
-   
+    
     async function sendToLedMatrix() {
       if (!port || !writer) {
         alert('Vui lòng kết nối với Serial trước!');
@@ -624,15 +624,18 @@ updateCurrentTime();
     
       let message;
       if (!isCountingDown) {
-        const currentTime = document.getElementById('currentTime').textContent;
-        const formattedTime = currentTime.trim(); // Xóa khoảng trắng thừa
-        message = `Current Time: ${formattedTime}`;
+        const currentTime = document.getElementById('currentTime').textContent; // HH:MM:SS
+        message = `Current Time: ${currentTime}`;
       } else {
         const days = document.getElementById('days').childNodes[0].textContent;
         const hours = document.getElementById('hours').childNodes[0].textContent;
         const minutes = document.getElementById('minutes').childNodes[0].textContent;
         const seconds = document.getElementById('seconds').childNodes[0].textContent;
-        message = `Countdown: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+        // Chuyển đổi thành định dạng HH:MM:SS
+        let totalHours = parseInt(days) * 24 + parseInt(hours);
+        if (totalHours > 99) totalHours = 99; // Giới hạn tối đa 99 giờ
+        const timeString = `${String(totalHours).padStart(2, '0')}:${minutes}:${seconds}`;
+        message = `Countdown: ${timeString}`;
       }
     
       try {
