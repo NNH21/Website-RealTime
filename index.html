@@ -590,24 +590,55 @@
 
     async function sendCurrentTimeToArduino() {
       if (!port || !writer) {
-        console.log('Chua ket noi Serial, khong the gui thoi gian');
+        console.log('Chưa kết nối Serial, không thể gửi thời gian');
         return;
       }
-
+    
       const now = new Date();
-      const time = now.toLocaleTimeString('en-US', { hour12: false });
+      const time = now.toLocaleTimeString('en-US', { hour12: false }); // Định dạng HH:MM:SS
       const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      const timeMessage = `SET_TIME:${date} ${time}`; // Dong bo RTC
-      const displayMessage = `Current Time: ${time}`; // Hien thi tren LED (bao gom giay)
-
+      const timeMessage = `SET_TIME:${date} ${time}`; // Đồng bộ RTC
+      const displayMessage = `Current Time: ${time}`; // Hiển thị trên LED
+    
       try {
         const encoder = new TextEncoder();
         await writer.write(encoder.encode(timeMessage + '\n'));
         await writer.write(encoder.encode(displayMessage + '\n'));
-        console.log('Gui thoi gian tu dong:', timeMessage);
-        console.log('Gui thoi gian hien thi:', displayMessage);
+        console.log('Gửi thời gian tự động:', timeMessage);
+        console.log('Gửi thời gian hiển thị:', displayMessage);
       } catch (error) {
-        console.error('Loi gui thoi gian tu dong:', error);
+        console.error('Lỗi gửi thời gian tự động:', error);
+      }
+    }
+    
+    async function sendToLedMatrix() {
+      if (!port || !writer) {
+        alert('Vui lòng kết nối với Serial trước!');
+        return;
+      }
+    
+      let message;
+      if (!isCountingDown) {
+        const currentTime = document.getElementById('currentTime').textContent;
+        // Đảm bảo định dạng thời gian là HH:MM:SS
+        const formattedTime = currentTime.trim(); // Xóa khoảng trắng thừa
+        message = `Current Time: ${formattedTime}`;
+      } else {
+        const days = document.getElementById('days').childNodes[0].textContent;
+        const hours = document.getElementById('hours').childNodes[0].textContent;
+        const minutes = document.getElementById('minutes').childNodes[0].textContent;
+        const seconds = document.getElementById('seconds').childNodes[0].textContent;
+        message = `Countdown: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+      }
+    
+      try {
+        console.log('Gửi dữ liệu qua Serial:', message); // Log để kiểm tra
+        const encoder = new TextEncoder();
+        await writer.write(encoder.encode(message + '\n'));
+        alert('Dữ liệu đã được gửi đến LED Matrix!');
+      } catch (error) {
+        console.error('Lỗi gửi dữ liệu:', error);
+        alert('Không thể gửi dữ liệu: ' + error.message);
       }
     }
 
