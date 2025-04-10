@@ -488,6 +488,7 @@
     // Web Serial API de gui du lieu qua Serial
     let port = null;
     let writer = null;
+    let reader = null;
 
     async function connectToSerial() {
       if (!navigator.serial) {
@@ -500,13 +501,17 @@
         port = await navigator.serial.requestPort();
         await port.open({ baudRate: 9600 });
 
-        // Tao writer de gui du lieu
+        // Tao writer va reader
         writer = port.writable.getWriter();
+        reader = port.readable.getWriter();
 
         // Cap nhat trang thai nut
         document.getElementById('connectButton').disabled = true;
         document.getElementById('disconnectButton').disabled = false;
         alert('Ket noi Serial thanh cong!');
+
+        // Doc du lieu tu Serial
+        readSerialData();
       } catch (error) {
         console.error('Loi ket noi Serial:', error);
         alert('Khong the ket noi voi Serial: ' + error.message);
@@ -515,10 +520,14 @@
 
     async function disconnectFromSerial() {
       try {
-        // Giai phong writer
+        // Giai phong writer va reader
         if (writer) {
           await writer.releaseLock();
           writer = null;
+        }
+        if (reader) {
+          await reader.releaseLock();
+          reader = null;
         }
         // Dong cong Serial
         if (port) {
@@ -533,6 +542,24 @@
       } catch (error) {
         console.error('Loi ngat ket noi Serial:', error);
         alert('Khong the ngat ket noi Serial: ' + error.message);
+      }
+    }
+
+    async function readSerialData() {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const message = new TextDecoder().decode(value).trim();
+        console.log('Nhan tu Serial:', message);
+        if (message === "REQUEST_TIME") {
+          const now = new Date();
+          const time = now.toLocaleTimeString('en-US', { hour12: false });
+          const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          const timeMessage = `SET_TIME:${date} ${time}`; // Dinh dang: SET_TIME:DD/MM/YYYY HH:MM:SS
+          const encoder = new TextEncoder();
+          await writer.write(encoder.encode(timeMessage + '\n'));
+          console.log('Gui thoi gian:', timeMessage);
+        }
       }
     }
 
