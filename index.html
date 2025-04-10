@@ -414,6 +414,12 @@
       });
     }
 
+    // Khai bao bien Serial o dau ma
+    let port = null;
+    let writer = null;
+    let reader = null;
+    let serialBuffer = ""; // Bien de luu tru cac chunk du lieu tu Serial
+
     // Cap nhat thoi gian hien tai
     function updateCurrentTime() {
       const now = new Date();
@@ -489,12 +495,6 @@
     // Gan su kien change de tu dong chay dem nguoc khi nguoi dung chinh ngay gio
     document.getElementById('endDate').addEventListener('change', startCountdown);
     document.getElementById('endTime').addEventListener('change', startCountdown);
-
-    // Web Serial API de gui du lieu qua Serial
-    let port = null;
-    let writer = null;
-    let reader = null;
-    let serialBuffer = ""; // Bien de luu tru cac chunk du lieu tu Serial
 
     async function connectToSerial() {
       if (!navigator.serial) {
@@ -598,7 +598,7 @@
       const time = now.toLocaleTimeString('en-US', { hour12: false });
       const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const timeMessage = `SET_TIME:${date} ${time}`; // Dong bo RTC
-      const displayMessage = `Current Time: ${time}`; // Hien thi tren LED
+      const displayMessage = `Current Time: ${time}`; // Hien thi tren LED (bao gom giay)
 
       try {
         const encoder = new TextEncoder();
@@ -621,7 +621,7 @@
 
       if (!isCountingDown) {
         const currentTime = document.getElementById('currentTime').textContent;
-        message = `Current Time: ${currentTime}`;
+        message = `Current Time: ${currentTime}`; // Gui HH:MM:SS
       } else {
         const days = document.getElementById('days').childNodes[0].textContent;
         const hours = document.getElementById('hours').childNodes[0].textContent;
