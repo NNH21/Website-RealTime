@@ -421,27 +421,32 @@
     let serialBuffer = ""; // Bien de luu tru cac chunk du lieu tu Serial
 
     // Cap nhat thoi gian hien tai
-    function updateCurrentTime() {
-      const now = new Date();
-      const time = now.toLocaleTimeString('en-US', { hour12: false });
-      const date = now.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
+// Cập nhật thời gian hiện tại và gửi mỗi giây
+function updateCurrentTime() {
+  const now = new Date();
+  const time = now.toLocaleTimeString('en-US', { hour12: false }); // Định dạng HH:MM:SS
+  const date = now.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
 
-      document.getElementById('currentTime').textContent = time;
-      document.getElementById('currentDate').textContent = date;
+  document.getElementById('currentTime').textContent = time;
+  document.getElementById('currentDate').textContent = date;
 
-      // Tu dong gui thoi gian moi phut (khi ket noi Serial)
-      if (port && writer && now.getSeconds() === 0) { // Gui moi phut (khi giay = 0)
-        sendCurrentTimeToArduino();
-      }
+  // Gửi thời gian mỗi giây (bỏ điều kiện now.getSeconds() === 0)
+  if (port && writer) {
+    try {
+      sendCurrentTimeToArduino();
+    } catch (error) {
+      console.error('Lỗi gửi thời gian tự động:', error);
     }
+  }
+}
 
-    setInterval(updateCurrentTime, 1000);
-    updateCurrentTime();
+setInterval(updateCurrentTime, 1000); // Cập nhật mỗi giây
+updateCurrentTime();
 
     let countdownInterval;
     let isCountingDown = false;
@@ -610,7 +615,7 @@
         console.error('Lỗi gửi thời gian tự động:', error);
       }
     }
-    
+   
     async function sendToLedMatrix() {
       if (!port || !writer) {
         alert('Vui lòng kết nối với Serial trước!');
@@ -620,7 +625,6 @@
       let message;
       if (!isCountingDown) {
         const currentTime = document.getElementById('currentTime').textContent;
-        // Đảm bảo định dạng thời gian là HH:MM:SS
         const formattedTime = currentTime.trim(); // Xóa khoảng trắng thừa
         message = `Current Time: ${formattedTime}`;
       } else {
@@ -632,43 +636,13 @@
       }
     
       try {
-        console.log('Gửi dữ liệu qua Serial:', message); // Log để kiểm tra
+        console.log('Gửi dữ liệu qua Serial:', message);
         const encoder = new TextEncoder();
         await writer.write(encoder.encode(message + '\n'));
         alert('Dữ liệu đã được gửi đến LED Matrix!');
       } catch (error) {
         console.error('Lỗi gửi dữ liệu:', error);
         alert('Không thể gửi dữ liệu: ' + error.message);
-      }
-    }
-
-    async function sendToLedMatrix() {
-      if (!port || !writer) {
-        alert('Vui long ket noi voi Serial truoc!');
-        return;
-      }
-
-      let message;
-
-      if (!isCountingDown) {
-        const currentTime = document.getElementById('currentTime').textContent;
-        message = `Current Time: ${currentTime}`; // Gui HH:MM:SS
-      } else {
-        const days = document.getElementById('days').childNodes[0].textContent;
-        const hours = document.getElementById('hours').childNodes[0].textContent;
-        const minutes = document.getElementById('minutes').childNodes[0].textContent;
-        const seconds = document.getElementById('seconds').childNodes[0].textContent;
-        message = `Countdown: ${days}d ${hours}h ${minutes}m ${seconds}s`;
-      }
-
-      try {
-        console.log('Gui du lieu qua Serial:', message);
-        const encoder = new TextEncoder();
-        await writer.write(encoder.encode(message + '\n'));
-        alert('Du lieu da duoc gui den LED Matrix!');
-      } catch (error) {
-        console.error('Loi gui du lieu:', error);
-        alert('Khong the gui du lieu: ' + error.message);
       }
     }
 
