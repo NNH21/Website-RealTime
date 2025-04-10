@@ -487,34 +487,36 @@
     }
 
     async function sendToLedMatrix() {
-      if (!port || !writer) {
-        alert('Vui lòng kết nối với Serial trước!');
-        return;
+        if (!port || !writer) {
+          alert('Vui lòng kết nối với Serial trước!');
+          return;
+        }
+      
+        let message;
+      
+        if (!isCountingDown) {
+          const currentTime = document.getElementById('currentTime').textContent;
+          message = `Time: ${currentTime}`;
+        } else {
+          const days = document.getElementById('days').childNodes[0].textContent;
+          const hours = document.getElementById('hours').childNodes[0].textContent;
+          const minutes = document.getElementById('minutes').childNodes[0].textContent;
+          const seconds = document.getElementById('seconds').childNodes[0].textContent;
+          message = `Time: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+        }
+      
+        try {
+          // Log dữ liệu trước khi gửi
+          console.log('Sending to Serial:', message);
+          // Gửi dữ liệu qua Serial
+          const encoder = new TextEncoder();
+          await writer.write(encoder.encode(message + '\n'));
+          alert('Dữ liệu đã được gửi đến LED Matrix!');
+        } catch (error) {
+          console.error('Error sending data:', error);
+          alert('Không thể gửi dữ liệu: ' + error.message);
+        }
       }
-
-      let message;
-
-      if (!isCountingDown) {
-        const currentTime = document.getElementById('currentTime').textContent;
-        message = `Current Time: ${currentTime}`;
-      } else {
-        const days = document.getElementById('days').childNodes[0].textContent;
-        const hours = document.getElementById('hours').childNodes[0].textContent;
-        const minutes = document.getElementById('minutes').childNodes[0].textContent;
-        const seconds = document.getElementById('seconds').childNodes[0].textContent;
-        message = `Countdown: ${days}d ${hours}h ${minutes}m ${seconds}s`;
-      }
-
-      try {
-        // Gửi dữ liệu qua Serial
-        const encoder = new TextEncoder();
-        await writer.write(encoder.encode(message + '\n'));
-        alert('Dữ liệu đã được gửi đến LED Matrix!');
-      } catch (error) {
-        console.error('Error sending data:', error);
-        alert('Không thể gửi dữ liệu: ' + error.message);
-      }
-    }
 
     // Ngăn chặn xem mã nguồn bằng Ctrl+U
     document.addEventListener('keydown', function(event) {
