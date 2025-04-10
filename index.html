@@ -168,6 +168,13 @@
       color: rgba(255, 255, 255, 0.7);
     }
 
+    .button-group {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
     button {
       width: 100%;
       padding: 2rem;
@@ -205,6 +212,16 @@
 
     button:active {
       transform: scale(0.98);
+    }
+
+    button:disabled {
+      background: linear-gradient(45deg, #555, #777);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    #disconnectButton {
+      background: linear-gradient(45deg, #ff5555, #ff7777);
     }
 
     .logout-btn {
@@ -272,6 +289,7 @@
       .countdown-inputs input { padding: 0.9rem; font-size: 0.95rem; width: 100%; }
       .countdown-timer { font-size: 1.2rem; gap: 1rem; }
       button { padding: 1rem; font-size: 1rem; }
+      .button-group { flex-direction: column; }
     }
 
     @media (max-width: 480px) {
@@ -318,8 +336,13 @@
       </div>
     </div>
 
+    <!-- Nhóm nút kết nối/ngắt kết nối Serial -->
+    <div class="button-group">
+      <button id="connectButton" onclick="connectToSerial()">Connect to Serial</button>
+      <button id="disconnectButton" onclick="disconnectFromSerial()" disabled>Disconnect Serial</button>
+    </div>
+
     <!-- Nút gửi đến LED Matrix -->
-    <button onclick="connectToSerial()">Connect to Serial</button>
     <button onclick="sendToLedMatrix()">Send to LED Matrix</button>
   </div>
 
@@ -352,34 +375,34 @@
 
     // Firebase Configuration
     const firebaseConfig = {
-        apiKey: "AIzaSyCGOa3EHsEMAjYIwR3eU0j2PpxTmQ0vOD4",
-        authDomain: "inforuserrealtime.firebaseapp.com",
-        databaseURL: "https://inforuserrealtime-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "inforuserrealtime",
-        storageBucket: "inforuserrealtime.firebasestorage.app",
-        messagingSenderId: "742918396384",
-        appId: "1:742918396384:web:e00297fb3b8e1db6783385"
-      };
+      apiKey: "AIzaSyCGOa3EHsEMAjYIwR3eU0j2PpxTmQ0vOD4",
+      authDomain: "inforuserrealtime.firebaseapp.com",
+      databaseURL: "https://inforuserrealtime-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "inforuserrealtime",
+      storageBucket: "inforuserrealtime.firebasestorage.app",
+      messagingSenderId: "742918396384",
+      appId: "1:742918396384:web:e00297fb3b8e1db6783385"
+    };
 
     // Initialize Firebase
     try {
       firebase.initializeApp(firebaseConfig);
-      console.log('Firebase khởi tạo thành công!');
+      console.log('Firebase khoi tao thanh cong!');
     } catch (error) {
-      console.error('Lỗi khởi tạo Firebase:', error);
-      alert('Không thể khởi tạo Firebase. Vui lòng kiểm tra lại cấu hình!');
+      console.error('Loi khoi tao Firebase:', error);
+      alert('Khong the khoi tao Firebase. Vui long kiem tra lai cau hinh!');
     }
 
     const auth = firebase.auth();
 
-    // Kiểm tra trạng thái đăng nhập
+    // Kiem tra trang thai dang nhap
     auth.onAuthStateChanged(user => {
       if (!user || !localStorage.getItem('isLoggedIn')) {
         window.location.href = 'login.html';
       }
     });
 
-    // Hàm đăng xuất
+    // Ham dang xuat
     function logout() {
       auth.signOut().then(() => {
         localStorage.removeItem('isLoggedIn');
@@ -391,7 +414,7 @@
       });
     }
 
-    // Cập nhật thời gian hiện tại
+    // Cap nhat thoi gian hien tai
     function updateCurrentTime() {
       const now = new Date();
       const time = now.toLocaleTimeString('en-US', { hour12: false });
@@ -412,7 +435,7 @@
     let countdownInterval;
     let isCountingDown = false;
 
-    // Hàm khởi động đếm ngược
+    // Ham khoi dong dem nguoc
     function startCountdown() {
       clearInterval(countdownInterval);
 
@@ -458,65 +481,92 @@
       }, 1000);
     }
 
-    // Gắn sự kiện change để tự động chạy đếm ngược khi người dùng chỉnh ngày giờ
+    // Gan su kien change de tu dong chay dem nguoc khi nguoi dung chinh ngay gio
     document.getElementById('endDate').addEventListener('change', startCountdown);
     document.getElementById('endTime').addEventListener('change', startCountdown);
 
-    // Web Serial API để gửi dữ liệu qua Serial
-    let port;
-    let writer;
+    // Web Serial API de gui du lieu qua Serial
+    let port = null;
+    let writer = null;
 
     async function connectToSerial() {
       if (!navigator.serial) {
-        alert('Web Serial API không được hỗ trợ trên trình duyệt này. Vui lòng sử dụng Chrome hoặc Edge.');
+        alert('Web Serial API khong duoc ho tro tren trinh duyet nay. Vui long su dung Chrome hoac Edge.');
         return;
       }
 
       try {
-        // Yêu cầu người dùng chọn cổng Serial
+        // Yeu cau nguoi dung chon cong Serial
         port = await navigator.serial.requestPort();
         await port.open({ baudRate: 9600 });
 
-        // Tạo writer để gửi dữ liệu
+        // Tao writer de gui du lieu
         writer = port.writable.getWriter();
-        alert('Kết nối Serial thành công!');
+
+        // Cap nhat trang thai nut
+        document.getElementById('connectButton').disabled = true;
+        document.getElementById('disconnectButton').disabled = false;
+        alert('Ket noi Serial thanh cong!');
       } catch (error) {
-        console.error('Error connecting to Serial:', error);
-        alert('Không thể kết nối với Serial: ' + error.message);
+        console.error('Loi ket noi Serial:', error);
+        alert('Khong the ket noi voi Serial: ' + error.message);
+      }
+    }
+
+    async function disconnectFromSerial() {
+      try {
+        // Giai phong writer
+        if (writer) {
+          await writer.releaseLock();
+          writer = null;
+        }
+        // Dong cong Serial
+        if (port) {
+          await port.close();
+          port = null;
+        }
+
+        // Cap nhat trang thai nut
+        document.getElementById('connectButton').disabled = false;
+        document.getElementById('disconnectButton').disabled = true;
+        alert('Da ngat ket noi Serial!');
+      } catch (error) {
+        console.error('Loi ngat ket noi Serial:', error);
+        alert('Khong the ngat ket noi Serial: ' + error.message);
       }
     }
 
     async function sendToLedMatrix() {
-        if (!port || !writer) {
-          alert('Vui lòng kết nối với Serial trước!');
-          return;
-        }
-      
-        let message;
-      
-        if (!isCountingDown) {
-          const currentTime = document.getElementById('currentTime').textContent;
-          message = `Current Time: ${currentTime}`; // Sửa thành "Current Time:"
-        } else {
-          const days = document.getElementById('days').childNodes[0].textContent;
-          const hours = document.getElementById('hours').childNodes[0].textContent;
-          const minutes = document.getElementById('minutes').childNodes[0].textContent;
-          const seconds = document.getElementById('seconds').childNodes[0].textContent;
-          message = `Countdown: ${days}d ${hours}h ${minutes}m ${seconds}s`; // Sửa thành "Countdown:"
-        }
-      
-        try {
-          console.log('Sending to Serial:', message);
-          const encoder = new TextEncoder();
-          await writer.write(encoder.encode(message + '\n'));
-          alert('Dữ liệu đã được gửi đến LED Matrix!');
-        } catch (error) {
-          console.error('Error sending data:', error);
-          alert('Không thể gửi dữ liệu: ' + error.message);
-        }
+      if (!port || !writer) {
+        alert('Vui long ket noi voi Serial truoc!');
+        return;
       }
 
-    // Ngăn chặn xem mã nguồn bằng Ctrl+U
+      let message;
+
+      if (!isCountingDown) {
+        const currentTime = document.getElementById('currentTime').textContent;
+        message = `Current Time: ${currentTime}`; // Sửa thành "Current Time:"
+      } else {
+        const days = document.getElementById('days').childNodes[0].textContent;
+        const hours = document.getElementById('hours').childNodes[0].textContent;
+        const minutes = document.getElementById('minutes').childNodes[0].textContent;
+        const seconds = document.getElementById('seconds').childNodes[0].textContent;
+        message = `Countdown: ${days}d ${hours}h ${minutes}m ${seconds}s`; // Sửa thành "Countdown:"
+      }
+
+      try {
+        console.log('Gui du lieu qua Serial:', message);
+        const encoder = new TextEncoder();
+        await writer.write(encoder.encode(message + '\n'));
+        alert('Du lieu da duoc gui den LED Matrix!');
+      } catch (error) {
+        console.error('Loi gui du lieu:', error);
+        alert('Khong the gui du lieu: ' + error.message);
+      }
+    }
+
+    // Ngan chan xem ma nguon bang Ctrl+U
     document.addEventListener('keydown', function(event) {
       if (event.ctrlKey && event.keyCode === 85) {
         event.preventDefault();
