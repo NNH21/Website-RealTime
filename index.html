@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LED Matrix Timer Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    :root {
+      --primary: #00f0ff;
+      --secondary: #ff00ff;
+      --accent: #ffffff;
+      --background: #0d0d1a;
+      --glow: rgba(0, 240, 255, 0.5);
+      --shadow: 0 0 60px rgba(0, 240, 255, 0.5);
+      --gradient: linear-gradient(45deg, #00f0ff, #ff00ff, #00f0ff);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: var(--background);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+      color: var(--accent);
+    }
+
+    #particles-js {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      background: var(--background);
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      padding: 6rem;
+      border-radius: 25px;
+      box-shadow: var(--shadow);
+      width: 100%;
+      max-width: 700px;
+      border: 2px solid rgba(0, 240, 255, 0.3);
+      animation: fadeInUp 1s ease-out;
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+    }
+
+    .container::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(0, 240, 255, 0.15), transparent);
+      animation: scan 6s linear infinite;
+      pointer-events: none;
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 4.5rem;
+      text-align: center;
+      margin-bottom: 3.5rem;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 30px var(--glow);
+      animation: neonPulse 2s infinite alternate;
+    }
+
+    .time-display {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1.5rem;
+      border-radius: 15px;
+      margin-bottom: 2rem;
+      box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.2);
+    }
+
+    .current-time {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.8rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    .current-date {
+      font-size: 1.2rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .countdown-section {
+      margin-bottom: 2rem;
+    }
+
+    .countdown-section h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      text-shadow: 0 0 10px var(--glow);
+    }
+
+    .countdown-inputs {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .countdown-inputs input {
+      width: 150px;
+      padding: 1.5rem 2rem;
+      border: 2px solid rgba(0, 240, 255, 0.3);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--accent);
+      font-size: 1.5rem;
+      transition: all 0.4s ease;
+      font-family: 'Roboto', sans-serif;
+    }
+
+    .countdown-inputs input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+      font-style: italic;
+    }
+
+    .countdown-inputs input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 25px var(--glow);
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+    }
+
+    .countdown-timer {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2rem;
+    }
+
+    .countdown-timer div {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 1rem;
+      border-radius: 10px;
+      min-width: 80px;
+      text-align: center;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+    }
+
+    .countdown-timer span {
+      display: block;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    button {
+      width: 100%;
+      padding: 2rem;
+      background: var(--gradient);
+      color: #0d0d1a;
+      font-weight: 700;
+      font-size: 1.8rem;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s ease;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      box-shadow: 0 0 40px var(--glow);
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      animation: shine 2s infinite;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 50px var(--glow);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .logout-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background: var(--gradient);
+      color: #0d0d1a;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 15px var(--glow);
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .logout-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 25px var(--glow);
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(50px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes neonPulse {
+      0% { text-shadow: 0 0 10px var(--glow); }
+      100% { text-shadow: 0 0 40px var(--glow); }
+    }
+
+    @keyframes scan {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    @keyframes shine {
+      0% { left: -100%; }
+      20% { left: 100%; }
+      100% { left: 100%; }
+    }
+
+    @media (max-width: 1200px) {
+      .container { max-width: 550px; padding: 3.5rem; }
+      h1 { font-size: 3rem; margin-bottom: 2rem; }
+      .countdown-inputs input { padding: 1.1rem; font-size: 1.1rem; }
+      .countdown-timer { font-size: 1.5rem; }
+      button { padding: 1.3rem; font-size: 1.2rem; }
+    }
+
+    @media (max-width: 1024px) {
+      .container { max-width: 500px; padding: 3rem; }
+      h1 { font-size: 2.8rem; margin-bottom: 1.8rem; }
+      .countdown-inputs input { padding: 1rem; font-size: 1rem; }
+      .countdown-timer { font-size: 1.4rem; }
+      button { padding: 1.2rem; font-size: 1.1rem; }
+    }
+
+    @media (max-width: 768px) {
+      .container { max-width: 450px; padding: 2.5rem; }
+      h1 { font-size: 2.5rem; margin-bottom: 1.5rem; }
+      .countdown-inputs { flex-direction: column; gap: 0.8rem; }
+      .countdown-inputs input { padding: 0.9rem; font-size: 0.95rem; width: 100%; }
+      .countdown-timer { font-size: 1.2rem; gap: 1rem; }
+      button { padding: 1rem; font-size: 1rem; }
+    }
+
+    @media (max-width: 480px) {
+      .container { max-width: 90%; padding: 2rem; }
+      h1 { font-size: 2rem; margin-bottom: 1.2rem; }
+      .countdown-inputs input { padding: 0.8rem; font-size: 0.9rem; }
+      .countdown-timer { font-size: 1rem; }
+      button { padding: 0.9rem; font-size: 0.95rem; }
+    }
+
+    @media (max-width: 360px) {
+      .container { padding: 1.5rem; }
+      h1 { font-size: 1.8rem; margin-bottom: 1rem; }
+      .countdown-inputs input { padding: 0.7rem; font-size: 0.85rem; }
+      .countdown-timer { font-size: 0.9rem; }
+      button { padding: 0.8rem; font-size: 0.9rem; }
+    }
+  </style>
+</head>
+<body oncontextmenu="return false">
+  <div id="particles-js"></div>
+  <div class="container">
+    <h1>LED Matrix Timer Dashboard</h1>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+
+    <!-- Hiển thị thời gian hiện tại -->
+    <div class="time-display">
+      <div class="current-time" id="currentTime"></div>
+      <div class="current-date" id="currentDate"></div>
+    </div>
+
+    <!-- Đếm ngược -->
+    <div class="countdown-section">
+      <h2>Countdown Timer</h2>
+      <div class="countdown-inputs">
+        <input type="date" id="endDate">
+        <input type="time" id="endTime">
+      </div>
+      <div class="countdown-timer" id="countdownTimer">
+        <div id="days">00<span>Days</span></div>
+        <div id="hours">00<span>Hours</span></div>
+        <div id="minutes">00<span>Minutes</span></div>
+        <div id="seconds">00<span>Seconds</span></div>
+      </div>
+    </div>
+
+    <!-- Nút gửi đến LED Matrix -->
+    <button onclick="sendToLedMatrix()">Send to LED Matrix</button>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+  <!-- Particles.js -->
+  <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+
+  <script>
+    // Initialize Particles.js
+    particlesJS("particles-js", {
+      particles: {
+        number: { value: 80, density: { enable: true, value_area: 800 } },
+        color: { value: "#00f0ff" },
+        shape: { type: "circle" },
+        opacity: { value: 0.5, random: true },
+        size: { value: 3, random: true },
+        line_linked: { enable: true, distance: 150, color: "#ff00ff", opacity: 0.4, width: 1 },
+        move: { enable: true, speed: 2, direction: "none", random: false, straight: false, out_mode: "out", bounce: false }
+      },
+      interactivity: {
+        detect_on: "canvas",
+        events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
+        modes: { repulse: { distance: 100, duration: 0.4 }, push: { particles_nb: 4 } }
+      },
+      retina_detect: true
+    });
+
+    // Firebase Configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyCGOa3EHsEMAjYIwR3eU0j2PpxTmQ0vOD4",
+        authDomain: "inforuserrealtime.firebaseapp.com",
+        databaseURL: "https://inforuserrealtime-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "inforuserrealtime",
+        storageBucket: "inforuserrealtime.firebasestorage.app",
+        messagingSenderId: "742918396384",
+        appId: "1:742918396384:web:e00297fb3b8e1db6783385"
+      };
+
+    // Initialize Firebase
+    try {
+      firebase.initializeApp(firebaseConfig);
+      console.log('Firebase khởi tạo thành công!');
+    } catch (error) {
+      console.error('Lỗi khởi tạo Firebase:', error);
+      alert('Không thể khởi tạo Firebase. Vui lòng kiểm tra lại cấu hình!');
+    }
+
+    const auth = firebase.auth();
+
+    // Kiểm tra trạng thái đăng nhập
+    auth.onAuthStateChanged(user => {
+      if (!user || !localStorage.getItem('isLoggedIn')) {
+        window.location.href = 'login.html';
+      }
+    });
+
+    // Hàm đăng xuất
+    function logout() {
+      auth.signOut().then(() => {
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('userId');
+        window.location.href = 'login.html';
+      }).catch(error => {
+        console.error('Logout error:', error);
+        alert('Error logging out: ' + error.message);
+      });
+    }
+
+    // Cập nhật thời gian hiện tại
+    function updateCurrentTime() {
+      const now = new Date();
+      const time = now.toLocaleTimeString('en-US', { hour12: false });
+      const date = now.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      document.getElementById('currentTime').textContent = time;
+      document.getElementById('currentDate').textContent = date;
+    }
+
+    setInterval(updateCurrentTime, 1000);
+    updateCurrentTime();
+
+    let countdownInterval;
+    let isCountingDown = false;
+
+    // Hàm khởi động đếm ngược
+    function startCountdown() {
+      clearInterval(countdownInterval);
+
+      const endDateInput = document.getElementById('endDate').value;
+      const endTimeInput = document.getElementById('endTime').value;
+
+      if (!endDateInput || !endTimeInput) {
+        // Nếu không có ngày giờ được chọn, không chạy đếm ngược
+        isCountingDown = false;
+        document.getElementById('days').childNodes[0].textContent = '00';
+        document.getElementById('hours').childNodes[0].textContent = '00';
+        document.getElementById('minutes').childNodes[0].textContent = '00';
+        document.getElementById('seconds').childNodes[0].textContent = '00';
+        return;
+      }
+
+      isCountingDown = true;
+      const endDateTime = new Date(`${endDateInput}T${endTimeInput}`).getTime();
+
+      countdownInterval = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = endDateTime - now;
+
+        if (distance < 0) {
+          clearInterval(countdownInterval);
+          isCountingDown = false;
+          document.getElementById('days').childNodes[0].textContent = '00';
+          document.getElementById('hours').childNodes[0].textContent = '00';
+          document.getElementById('minutes').childNodes[0].textContent = '00';
+          document.getElementById('seconds').childNodes[0].textContent = '00';
+          alert('Countdown has ended!');
+          return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        document.getElementById('days').childNodes[0].textContent = String(days).padStart(2, '0');
+        document.getElementById('hours').childNodes[0].textContent = String(hours).padStart(2, '0');
+        document.getElementById('minutes').childNodes[0].textContent = String(minutes).padStart(2, '0');
+        document.getElementById('seconds').childNodes[0].textContent = String(seconds).padStart(2, '0');
+      }, 1000);
+    }
+
+    // Gắn sự kiện change để tự động chạy đếm ngược khi người dùng chỉnh ngày giờ
+    document.getElementById('endDate').addEventListener('change', startCountdown);
+    document.getElementById('endTime').addEventListener('change', startCountdown);
+
+    // Hàm gửi dữ liệu đến LED Matrix
+    async function sendToLedMatrix() {
+      let message;
+
+      if (!isCountingDown) {
+        // Nếu không có đếm ngược, gửi thời gian hiện tại
+        const currentTime = document.getElementById('currentTime').textContent;
+        message = `Current Time: ${currentTime}`;
+      } else {
+        // Nếu có đếm ngược, gửi thời gian đếm ngược
+        const days = document.getElementById('days').childNodes[0].textContent;
+        const hours = document.getElementById('hours').childNodes[0].textContent;
+        const minutes = document.getElementById('minutes').childNodes[0].textContent;
+        const seconds = document.getElementById('seconds').childNodes[0].textContent;
+        message = `Countdown: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+      }
+
+      // Gửi dữ liệu đến LED Matrix qua API
+      const url = 'https://5465-2402-800-629c-60bc-1f6-27ea-f789-1a94.ngrok-free.app/update';
+      const data = `text=${encodeURIComponent(message)}&speed=50&effect=scroll-left&brightness=2&blink=off&blinkInterval=500`;
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: data
+        });
+
+        if (response.ok) {
+          alert('Data sent to LED Matrix successfully!');
+        } else {
+          throw new Error(`Server error: ${response.status}`);
+        }
+      } catch (error) {
+        alert(`Failed to send data: ${error.message}`);
+      }
+    }
+
+    // Ngăn chặn xem mã nguồn bằng Ctrl+U
+    document.addEventListener('keydown', function(event) {
+      if (event.ctrlKey && event.keyCode === 85) {
+        event.preventDefault();
+        return false;
+      }
+    });
+  </script>
+</body>
+</html>
