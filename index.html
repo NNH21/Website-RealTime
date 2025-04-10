@@ -603,7 +603,7 @@ updateCurrentTime();
       const time = now.toLocaleTimeString('en-US', { hour12: false }); // Định dạng HH:MM:SS
       const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const timeMessage = `SET_TIME:${date} ${time}`; // Đồng bộ RTC
-      const displayMessage = `Current Time: ${time}`; // Hiển thị đầy đủ HH:MM:SS trên LED
+      const displayMessage = `${time}`; // Hiển thị đầy đủ HH:MM:SS trên LED
     
       try {
         const encoder = new TextEncoder();
@@ -625,7 +625,7 @@ updateCurrentTime();
       let message;
       if (!isCountingDown) {
         const currentTime = document.getElementById('currentTime').textContent; // HH:MM:SS
-        message = `Current Time: ${currentTime}`;
+        message = `${currentTime}`;
       } else {
         const days = document.getElementById('days').childNodes[0].textContent;
         const hours = document.getElementById('hours').childNodes[0].textContent;
