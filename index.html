@@ -503,7 +503,7 @@
 
         // Tao writer va reader
         writer = port.writable.getWriter();
-        reader = port.readable.getWriter();
+        reader = port.readable.getReader(); // Sửa lỗi: getWriter() -> getReader()
 
         // Cap nhat trang thai nut
         document.getElementById('connectButton').disabled = true;
@@ -547,18 +547,26 @@
 
     async function readSerialData() {
       while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const message = new TextDecoder().decode(value).trim();
-        console.log('Nhan tu Serial:', message);
-        if (message === "REQUEST_TIME") {
-          const now = new Date();
-          const time = now.toLocaleTimeString('en-US', { hour12: false });
-          const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
-          const timeMessage = `SET_TIME:${date} ${time}`; // Dinh dang: SET_TIME:DD/MM/YYYY HH:MM:SS
-          const encoder = new TextEncoder();
-          await writer.write(encoder.encode(timeMessage + '\n'));
-          console.log('Gui thoi gian:', timeMessage);
+        try {
+          const { value, done } = await reader.read();
+          if (done) {
+            console.log('Reader has been closed');
+            break;
+          }
+          const message = new TextDecoder().decode(value).trim();
+          console.log('Nhan tu Serial:', message);
+          if (message === "REQUEST_TIME") {
+            const now = new Date();
+            const time = now.toLocaleTimeString('en-US', { hour12: false });
+            const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const timeMessage = `SET_TIME:${date} ${time}`; // Dinh dang: SET_TIME:DD/MM/YYYY HH:MM:SS
+            const encoder = new TextEncoder();
+            await writer.write(encoder.encode(timeMessage + '\n'));
+            console.log('Gui thoi gian:', timeMessage);
+          }
+        } catch (error) {
+          console.error('Loi doc Serial:', error);
+          break;
         }
       }
     }
