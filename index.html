@@ -436,13 +436,8 @@ function updateCurrentTime() {
   document.getElementById('currentTime').textContent = time;
   document.getElementById('currentDate').textContent = date;
 
-  if (port && writer) {
-    try {
-      sendCurrentTimeToArduino();
-    } catch (error) {
-      console.error('Lỗi gửi thời gian tự động:', error);
-    }
-  }
+  // Không gửi dữ liệu tự động mỗi giây nữa
+  // Chỉ đồng bộ RTC khi cần qua readSerialData()
 }
 
 setInterval(updateCurrentTime, 1000);
@@ -566,7 +561,7 @@ async function readSerialData() {
             const timeMessage = `SET_TIME:${date} ${time}`;
             const encoder = new TextEncoder();
             await writer.write(encoder.encode(timeMessage + '\n'));
-            console.log('Gửi thời gian:', timeMessage);
+            console.log('Gửi thời gian đồng bộ:', timeMessage);
           }
         }
       }
@@ -578,21 +573,19 @@ async function readSerialData() {
 }
 
 async function sendCurrentTimeToArduino() {
+  // Không dùng hàm này để gửi dữ liệu hiển thị nữa
   if (!port || !writer) {
     console.log('Chưa kết nối Serial, không thể gửi thời gian');
     return;
   }
   const now = new Date();
-  const time = now.toLocaleTimeString('en-US', { hour12: false }); // HH:MM:SS
+  const time = now.toLocaleTimeString('en-US', { hour12: false });
   const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const timeMessage = `SET_TIME:${date} ${time}`; // Đồng bộ RTC
-  const displayMessage = `${time}`; // Chỉ gửi HH:MM:SS
+  const timeMessage = `SET_TIME:${date} ${time}`; // Chỉ đồng bộ RTC
   try {
     const encoder = new TextEncoder();
     await writer.write(encoder.encode(timeMessage + '\n'));
-    await writer.write(encoder.encode(displayMessage + '\n'));
     console.log('Gửi thời gian tự động:', timeMessage);
-    console.log('Gửi thời gian hiển thị:', displayMessage);
   } catch (error) {
     console.error('Lỗi gửi thời gian tự động:', error);
   }
@@ -614,7 +607,7 @@ async function sendToLedMatrix() {
     const seconds = document.getElementById('seconds').childNodes[0].textContent;
     let totalHours = parseInt(days) * 24 + parseInt(hours);
     if (totalHours > 99) totalHours = 99;
-    message = `${String(totalHours).padStart(2, '0')}:${minutes}:${seconds}`; // Chỉ gửi HH:MM:SS
+    message = `${String(totalHours).padStart(2, '0')}:${minutes}:${seconds}`;
   }
   try {
     console.log('Gửi dữ liệu qua Serial:', message);
