@@ -181,6 +181,7 @@
       background: var(--gradient);
       color: #0d0d1a;
       font-weight: 700;
+ Ascending;
       font-size: 1.8rem;
       border: none;
       border-radius: 12px;
@@ -427,6 +428,11 @@
 
       document.getElementById('currentTime').textContent = time;
       document.getElementById('currentDate').textContent = date;
+
+      // Tu dong gui thoi gian moi phut (khi ket noi Serial)
+      if (port && writer && now.getSeconds() === 0) { // Gui moi phut (khi giay = 0)
+        sendCurrentTimeToArduino();
+      }
     }
 
     setInterval(updateCurrentTime, 1000);
@@ -489,6 +495,7 @@
     let port = null;
     let writer = null;
     let reader = null;
+    let serialBuffer = ""; // Bien de luu tru cac chunk du lieu tu Serial
 
     async function connectToSerial() {
       if (!navigator.serial) {
@@ -503,7 +510,7 @@
 
         // Tao writer va reader
         writer = port.writable.getWriter();
-        reader = port.readable.getReader(); // Sửa lỗi: getWriter() -> getReader()
+        reader = port.readable.getReader();
 
         // Cap nhat trang thai nut
         document.getElementById('connectButton').disabled = true;
@@ -553,21 +560,55 @@
             console.log('Reader has been closed');
             break;
           }
-          const message = new TextDecoder().decode(value).trim();
-          console.log('Nhan tu Serial:', message);
-          if (message === "REQUEST_TIME") {
-            const now = new Date();
-            const time = now.toLocaleTimeString('en-US', { hour12: false });
-            const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const timeMessage = `SET_TIME:${date} ${time}`; // Dinh dang: SET_TIME:DD/MM/YYYY HH:MM:SS
-            const encoder = new TextEncoder();
-            await writer.write(encoder.encode(timeMessage + '\n'));
-            console.log('Gui thoi gian:', timeMessage);
+          const chunk = new TextDecoder().decode(value);
+          serialBuffer += chunk; // Ghep chunk vao buffer
+
+          // Xu ly cac dong trong buffer
+          let lines = serialBuffer.split('\n');
+          serialBuffer = lines.pop(); // Luu lai phan du (chua ket thuc bang \n)
+
+          for (let line of lines) {
+            line = line.trim();
+            if (line) {
+              console.log('Nhan tu Serial:', line);
+              if (line === "REQUEST_TIME") {
+                const now = new Date();
+                const time = now.toLocaleTimeString('en-US', { hour12: false });
+                const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const timeMessage = `SET_TIME:${date} ${time}`;
+                const encoder = new TextEncoder();
+                await writer.write(encoder.encode(timeMessage + '\n'));
+                console.log('Gui thoi gian:', timeMessage);
+              }
+            }
           }
         } catch (error) {
           console.error('Loi doc Serial:', error);
           break;
         }
+      }
+    }
+
+    async function sendCurrentTimeToArduino() {
+      if (!port || !writer) {
+        console.log('Chua ket noi Serial, khong the gui thoi gian');
+        return;
+      }
+
+      const now = new Date();
+      const time = now.toLocaleTimeString('en-US', { hour12: false });
+      const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const timeMessage = `SET_TIME:${date} ${time}`; // Dong bo RTC
+      const displayMessage = `Current Time: ${time}`; // Hien thi tren LED (bao gom giay)
+
+      try {
+        const encoder = new TextEncoder();
+        await writer.write(encoder.encode(timeMessage + '\n'));
+        await writer.write(encoder.encode(displayMessage + '\n'));
+        console.log('Gui thoi gian tu dong:', timeMessage);
+        console.log('Gui thoi gian hien thi:', displayMessage);
+      } catch (error) {
+        console.error('Loi gui thoi gian tu dong:', error);
       }
     }
 
@@ -581,13 +622,13 @@
 
       if (!isCountingDown) {
         const currentTime = document.getElementById('currentTime').textContent;
-        message = `Current Time: ${currentTime}`; // Sửa thành "Current Time:"
+        message = `Current Time: ${currentTime}`; // Gui HH:MM:SS
       } else {
         const days = document.getElementById('days').childNodes[0].textContent;
         const hours = document.getElementById('hours').childNodes[0].textContent;
         const minutes = document.getElementById('minutes').childNodes[0].textContent;
         const seconds = document.getElementById('seconds').childNodes[0].textContent;
-        message = `Countdown: ${days}d ${hours}h ${minutes}m ${seconds}s`; // Sửa thành "Countdown:"
+        message = `Countdown: ${days}d ${hours}h ${minutes}m ${seconds}s`;
       }
 
       try {
