@@ -306,7 +306,7 @@
     <!-- Thời gian thực -->
     <div id="realtimeSection" class="display-section">
       <h2>Real-Time Clock</h2>
-      <div class="time-display" id="currentTime">00:00</div>
+      <div class="time-display" id="currentTime">00:00:00</div>
     </div>
 
     <!-- Đếm ngược -->
@@ -425,9 +425,8 @@
     // Cập nhật thời gian thực
     function updateCurrentTime() {
       const now = new Date();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      document.getElementById('currentTime').textContent = `${hours}:${minutes}`;
+      const time = now.toLocaleTimeString('en-US', { hour12: false });
+      document.getElementById('currentTime').textContent = time;
     }
 
     setInterval(updateCurrentTime, 1000);
@@ -538,7 +537,7 @@
             line = line.trim();
             if (line) {
               console.log('Received from Serial:', line);
-              if (line === "REQUEST_TIME") {
+              if (line === "RT") {
                 const now = new Date();
                 const time = now.toLocaleTimeString('en-US', { hour12: false });
                 const date = now.toLocaleDateString('en-US', {
@@ -572,7 +571,7 @@
         const time = document.getElementById('currentTime').textContent;
         message = `START_REALTIME:${time}`;
       } else {
-        message = document.getElementById('countdownTimer').textContent;
+        message = `START_COUNTDOWN:${document.getElementById('countdownTimer').textContent}`;
       }
 
       try {
