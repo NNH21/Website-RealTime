@@ -394,8 +394,6 @@
     let serialBuffer = "";
     let isCountingDown = false;
     let countdownInterval = null;
-    let countdownStartTime = null;
-    let countdownEndTime = null;
 
     // Chuyển đổi chế độ
     const realtimeSection = document.getElementById('realtimeSection');
@@ -409,8 +407,6 @@
           countdownSection.style.display = 'none';
           clearInterval(countdownInterval);
           isCountingDown = false;
-          countdownStartTime = null;
-          countdownEndTime = null;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
           if (port && writer) {
             writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
@@ -421,6 +417,7 @@
           if (port && writer) {
             writer.write(new TextEncoder().encode("STOP_REALTIME\n"));
           }
+          startCountdown();
         }
       });
     });
@@ -443,25 +440,20 @@
 
       if (!endDateInput || !endTimeInput) {
         isCountingDown = false;
-        countdownStartTime = null;
-        countdownEndTime = null;
         document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
         return;
       }
 
       isCountingDown = true;
-      countdownEndTime = new Date(`${endDateInput}T${endTimeInput}`).getTime();
-      countdownStartTime = new Date().getTime();
+      const endDateTime = new Date(`${endDateInput}T${endTimeInput}`).getTime();
 
       countdownInterval = setInterval(() => {
         const now = new Date().getTime();
-        const distance = countdownEndTime - now;
+        const distance = endDateTime - now;
 
         if (distance < 0) {
           clearInterval(countdownInterval);
           isCountingDown = false;
-          countdownStartTime = null;
-          countdownEndTime = null;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
           alert('Countdown has ended!');
           return;
@@ -579,10 +571,6 @@
         const time = document.getElementById('currentTime').textContent;
         message = `START_REALTIME:${time}`;
       } else {
-        if (!isCountingDown || !countdownStartTime || !countdownEndTime) {
-          alert('Please set a valid countdown date and time!');
-          return;
-        }
         message = `START_COUNTDOWN:${document.getElementById('countdownTimer').textContent}`;
       }
 
