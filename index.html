@@ -394,7 +394,6 @@
     let serialBuffer = "";
     let isCountingDown = false;
     let countdownInterval = null;
-    let realtimeInterval = null;
 
     // Chuyển đổi chế độ
     const realtimeSection = document.getElementById('realtimeSection');
@@ -409,14 +408,12 @@
           clearInterval(countdownInterval);
           isCountingDown = false;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
-          if (realtimeInterval && port && writer) {
-            sendRealTimeData();
+          if (port && writer) {
+            writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
           }
         } else {
           realtimeSection.style.display = 'none';
           countdownSection.style.display = 'block';
-          clearInterval(realtimeInterval);
-          realtimeInterval = null;
           if (port && writer) {
             writer.write(new TextEncoder().encode("STOP_REALTIME\n"));
           }
@@ -434,18 +431,6 @@
 
     setInterval(updateCurrentTime, 1000);
     updateCurrentTime();
-
-    // Gửi thời gian thực mỗi giây
-    async function sendRealTimeData() {
-      if (!port || !writer) return;
-      try {
-        const time = document.getElementById('currentTime').textContent;
-        await writer.write(new TextEncoder().encode(time + '\n'));
-        console.log('Sent real-time:', time);
-      } catch (error) {
-        console.error('Send real-time error:', error);
-      }
-    }
 
     // Khởi động đếm ngược
     function startCountdown() {
@@ -512,10 +497,9 @@
     // Ngắt kết nối Serial
     async function disconnectFromSerial() {
       try {
-        clearInterval(realtimeInterval);
-        realtimeInterval = null;
         if (writer) {
           await writer.write(new TextEncoder().encode("STOP_REALTIME\n"));
+          await writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
           await writer.releaseLock();
           writer = null;
         }
@@ -582,22 +566,21 @@
       }
 
       const mode = document.querySelector('input[name="mode"]:checked').value;
+      let message;
       if (mode === 'realtime') {
-        clearInterval(realtimeInterval);
-        realtimeInterval = setInterval(sendRealTimeData, 1000);
-        sendRealTimeData(); // Gửi ngay lần đầu
+        const time = document.getElementById('currentTime').textContent;
+        message = `START_REALTIME:${time}`;
       } else {
-        clearInterval(realtimeInterval);
-        realtimeInterval = null;
-        const message = document.getElementById('countdownTimer').textContent;
-        try {
-          console.log('Sending to Serial:', message);
-          await writer.write(new TextEncoder().encode(message + '\n'));
-          alert('Countdown sent to LED Matrix!');
-        } catch (error) {
-          console.error('Send data error:', error);
-          alert('Failed to send data: ' + error.message);
-        }
+        message = document.getElementById('countdownTimer').textContent;
+      }
+
+      try {
+        console.log('Sending to Serial:', message);
+        await writer.write(new TextEncoder().encode(message + '\n'));
+        alert(`${mode === 'realtime' ? 'Real-Time' : 'Countdown'} started on LED Matrix!`);
+      } catch (error) {
+        console.error('Send data error:', error);
+        alert('Failed to send data: ' + error.message);
       }
     }
 
