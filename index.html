@@ -306,7 +306,7 @@
     <!-- Thời gian thực -->
     <div id="realtimeSection" class="display-section">
       <h2>Real-Time Clock</h2>
-      <div class="time-display" id="currentTime">00:00:00</div>
+      <div class="time-display" id="currentTime">00:00</div>
     </div>
 
     <!-- Đếm ngược -->
@@ -425,8 +425,9 @@
     // Cập nhật thời gian thực
     function updateCurrentTime() {
       const now = new Date();
-      const time = now.toLocaleTimeString('en-US', { hour12: false });
-      document.getElementById('currentTime').textContent = time;
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('currentTime').textContent = `${hours}:${minutes}`;
     }
 
     setInterval(updateCurrentTime, 1000);
@@ -577,7 +578,7 @@
       try {
         console.log('Sending to Serial:', message);
         await writer.write(new TextEncoder().encode(message + '\n'));
-        alert(`${mode === 'realtime' ? 'Real-Time' : 'Countdown'} started on LED Matrix!`);
+        alert(`${mode === 'realtime' ? 'Real-Time' : 'Countdown'} sent to LED Matrix!`);
       } catch (error) {
         console.error('Send data error:', error);
         alert('Failed to send data: ' + error.message);
