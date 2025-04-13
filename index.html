@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LED Matrix Timer Dashboard</title>
+  <title>LED Matrix Control Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <style>
@@ -46,15 +46,14 @@
     .container {
       background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(20px);
-      padding: 6rem;
+      padding: 3rem;
       border-radius: 25px;
       box-shadow: var(--shadow);
       width: 100%;
-      max-width: 900px;
+      max-width: 800px;
       border: 2px solid rgba(0, 240, 255, 0.3);
       animation: fadeInUp 1s ease-out;
       position: relative;
-      overflow: hidden;
       text-align: center;
     }
 
@@ -72,9 +71,8 @@
 
     h1 {
       font-family: 'Orbitron', sans-serif;
-      font-size: 4.5rem;
-      text-align: center;
-      margin-bottom: 3.5rem;
+      font-size: 3rem;
+      margin-bottom: 2rem;
       background: var(--gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -82,7 +80,34 @@
       animation: neonPulse 2s infinite alternate;
     }
 
-    .time-display {
+    .mode-selector {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .mode-selector label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.2rem;
+      padding: 0.8rem 2rem;
+      border-radius: 12px;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .mode-selector input[type="radio"] {
+      display: none;
+    }
+
+    .mode-selector input[type="radio"]:checked + label {
+      background: var(--gradient);
+      color: #0d0d1a;
+      box-shadow: 0 0 20px var(--glow);
+    }
+
+    .display-section {
       background: rgba(0, 0, 0, 0.3);
       padding: 1.5rem;
       border-radius: 15px;
@@ -90,28 +115,18 @@
       box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.2);
     }
 
-    .current-time {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.8rem;
-      color: var(--accent);
-      margin-bottom: 0.5rem;
-    }
-
-    .current-date {
-      font-size: 1.2rem;
-      color: rgba(255, 255, 255, 0.7);
-    }
-
-    .countdown-section {
-      margin-bottom: 2rem;
-    }
-
-    .countdown-section h2 {
+    .display-section h2 {
       font-family: 'Orbitron', sans-serif;
       font-size: 1.5rem;
       color: var(--primary);
       margin-bottom: 1rem;
       text-shadow: 0 0 10px var(--glow);
+    }
+
+    .time-display {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2rem;
+      color: var(--accent);
     }
 
     .countdown-inputs {
@@ -122,15 +137,15 @@
     }
 
     .countdown-inputs input {
-      width: 150px;
-      padding: 1.5rem 2rem;
+      width: 200px;
+      padding: 1rem;
       border: 2px solid rgba(0, 240, 255, 0.3);
       border-radius: 12px;
       background: rgba(255, 255, 255, 0.05);
       color: var(--accent);
-      font-size: 1.5rem;
-      transition: all 0.4s ease;
+      font-size: 1.2rem;
       font-family: 'Roboto', sans-serif;
+      transition: all 0.4s ease;
     }
 
     .countdown-inputs input::placeholder {
@@ -141,47 +156,28 @@
     .countdown-inputs input:focus {
       border-color: var(--primary);
       box-shadow: 0 0 25px var(--glow);
-      background: rgba(255, 255, 255, 0.1);
       outline: none;
     }
 
     .countdown-timer {
-      display: flex;
-      justify-content: center;
-      gap: 1.5rem;
       font-family: 'Orbitron', sans-serif;
       font-size: 2rem;
-    }
-
-    .countdown-timer div {
-      background: rgba(0, 0, 0, 0.5);
-      padding: 1rem;
-      border-radius: 10px;
-      min-width: 80px;
-      text-align: center;
-      box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
-    }
-
-    .countdown-timer span {
-      display: block;
-      font-size: 0.9rem;
-      color: rgba(255, 255, 255, 0.7);
+      color: var(--accent);
     }
 
     .button-group {
       display: flex;
       justify-content: center;
       gap: 1rem;
-      margin-bottom: 1rem;
+      margin-bottom: 1.5rem;
     }
 
     button {
-      width: 100%;
-      padding: 2rem;
+      padding: 1.5rem 2rem;
       background: var(--gradient);
       color: #0d0d1a;
       font-weight: 700;
-      font-size: 1.8rem;
+      font-size: 1.2rem;
       border: none;
       border-radius: 12px;
       cursor: pointer;
@@ -189,8 +185,8 @@
       overflow: hidden;
       transition: all 0.4s ease;
       text-transform: uppercase;
-      letter-spacing: 2px;
-      box-shadow: 0 0 40px var(--glow);
+      letter-spacing: 1px;
+      box-shadow: 0 0 20px var(--glow);
       font-family: 'Orbitron', sans-serif;
     }
 
@@ -207,11 +203,7 @@
 
     button:hover {
       transform: scale(1.05);
-      box-shadow: 0 0 50px var(--glow);
-    }
-
-    button:active {
-      transform: scale(0.98);
+      box-shadow: 0 0 30px var(--glow);
     }
 
     button:disabled {
@@ -224,11 +216,16 @@
       background: linear-gradient(45deg, #ff5555, #ff7777);
     }
 
+    #sendButton {
+      width: 100%;
+      padding: 1.5rem;
+    }
+
     .logout-btn {
       position: absolute;
       top: 20px;
       right: 20px;
-      padding: 0.5rem 1rem;
+      padding: 0.8rem 1.5rem;
       font-size: 1rem;
       background: var(--gradient);
       color: #0d0d1a;
@@ -252,7 +249,7 @@
 
     @keyframes neonPulse {
       0% { text-shadow: 0 0 10px var(--glow); }
-      100% { text-shadow: 0 0 40px var(--glow); }
+      100% { text-shadow: 0 0 30px var(--glow); }
     }
 
     @keyframes scan {
@@ -267,44 +264,27 @@
     }
 
     @media (max-width: 1200px) {
-      .container { max-width: 550px; padding: 3.5rem; }
-      h1 { font-size: 3rem; margin-bottom: 2rem; }
-      .countdown-inputs input { padding: 1.1rem; font-size: 1.1rem; }
-      .countdown-timer { font-size: 1.5rem; }
-      button { padding: 1.3rem; font-size: 1.2rem; }
-    }
-
-    @media (max-width: 1024px) {
-      .container { max-width: 500px; padding: 3rem; }
-      h1 { font-size: 2.8rem; margin-bottom: 1.8rem; }
-      .countdown-inputs input { padding: 1rem; font-size: 1rem; }
-      .countdown-timer { font-size: 1.4rem; }
-      button { padding: 1.2rem; font-size: 1.1rem; }
+      .container { max-width: 600px; padding: 2.5rem; }
+      h1 { font-size: 2.5rem; }
+      .countdown-inputs input { width: 180px; }
+      .time-display, .countdown-timer { font-size: 1.8rem; }
+      button { padding: 1.2rem 1.5rem; font-size: 1.1rem; }
     }
 
     @media (max-width: 768px) {
-      .container { max-width: 450px; padding: 2.5rem; }
-      h1 { font-size: 2.5rem; margin-bottom: 1.5rem; }
-      .countdown-inputs { flex-direction: column; gap: 0.8rem; }
-      .countdown-inputs input { padding: 0.9rem; font-size: 0.95rem; width: 100%; }
-      .countdown-timer { font-size: 1.2rem; gap: 1rem; }
+      .container { max-width: 90%; padding: 2rem; }
+      h1 { font-size: 2rem; }
+      .mode-selector { flex-direction: column; gap: 1rem; }
+      .countdown-inputs { flex-direction: column; }
+      .countdown-inputs input { width: 100%; }
+      .time-display, .countdown-timer { font-size: 1.5rem; }
       button { padding: 1rem; font-size: 1rem; }
-      .button-group { flex-direction: column; }
     }
 
     @media (max-width: 480px) {
-      .container { max-width: 90%; padding: 2rem; }
-      h1 { font-size: 2rem; margin-bottom: 1.2rem; }
-      .countdown-inputs input { padding: 0.8rem; font-size: 0.9rem; }
-      .countdown-timer { font-size: 1rem; }
-      button { padding: 0.9rem; font-size: 0.95rem; }
-    }
-
-    @media (max-width: 360px) {
       .container { padding: 1.5rem; }
-      h1 { font-size: 1.8rem; margin-bottom: 1rem; }
-      .countdown-inputs input { padding: 0.7rem; font-size: 0.85rem; }
-      .countdown-timer { font-size: 0.9rem; }
+      h1 { font-size: 1.8rem; }
+      .time-display, .countdown-timer { font-size: 1.2rem; }
       button { padding: 0.8rem; font-size: 0.9rem; }
     }
   </style>
@@ -312,38 +292,39 @@
 <body oncontextmenu="return false">
   <div id="particles-js"></div>
   <div class="container">
-    <h1>LED Matrix Timer Dashboard</h1>
+    <h1>LED Matrix Control</h1>
     <button class="logout-btn" onclick="logout()">Logout</button>
 
-    <!-- Hiển thị thời gian hiện tại -->
-    <div class="time-display">
-      <div class="current-time" id="currentTime"></div>
-      <div class="current-date" id="currentDate"></div>
+    <!-- Chọn chế độ -->
+    <div class="mode-selector">
+      <input type="radio" id="realtimeMode" name="mode" value="realtime" checked>
+      <label for="realtimeMode">Real Time</label>
+      <input type="radio" id="countdownMode" name="mode" value="countdown">
+      <label for="countdownMode">Countdown</label>
+    </div>
+
+    <!-- Thời gian thực -->
+    <div id="realtimeSection" class="display-section">
+      <h2>Real-Time Clock</h2>
+      <div class="time-display" id="currentTime">00:00:00</div>
     </div>
 
     <!-- Đếm ngược -->
-    <div class="countdown-section">
+    <div id="countdownSection" class="display-section" style="display: none;">
       <h2>Countdown Timer</h2>
       <div class="countdown-inputs">
         <input type="date" id="endDate">
         <input type="time" id="endTime">
       </div>
-      <div class="countdown-timer" id="countdownTimer">
-        <div id="days">00<span>Days</span></div>
-        <div id="hours">00<span>Hours</span></div>
-        <div id="minutes">00<span>Minutes</span></div>
-        <div id="seconds">00<span>Seconds</span></div>
-      </div>
+      <div class="countdown-timer" id="countdownTimer">00d 00h 00m 00s</div>
     </div>
 
-    <!-- Nhóm nút kết nối/ngắt kết nối Serial -->
+    <!-- Nút điều khiển -->
     <div class="button-group">
       <button id="connectButton" onclick="connectToSerial()">Connect to Serial</button>
       <button id="disconnectButton" onclick="disconnectFromSerial()" disabled>Disconnect Serial</button>
     </div>
-
-    <!-- Nút gửi đến LED Matrix -->
-    <button onclick="sendToLedMatrix()">Send to LED Matrix</button>
+    <button id="sendButton" onclick="sendToLedMatrix()">Send to LED Matrix</button>
   </div>
 
   <!-- Firebase SDK -->
@@ -354,7 +335,7 @@
   <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
 
   <script>
-    // Initialize Particles.js
+    // Khởi tạo Particles.js
     particlesJS("particles-js", {
       particles: {
         number: { value: 80, density: { enable: true, value_area: 800 } },
@@ -373,7 +354,7 @@
       retina_detect: true
     });
 
-    // Firebase Configuration
+    // Cấu hình Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyCGOa3EHsEMAjYIwR3eU0j2PpxTmQ0vOD4",
       authDomain: "inforuserrealtime.firebaseapp.com",
@@ -384,29 +365,28 @@
       appId: "1:742918396384:web:e00297fb3b8e1db6783385"
     };
 
-    // Initialize Firebase
+    // Khởi tạo Firebase
     try {
       firebase.initializeApp(firebaseConfig);
-      console.log('Firebase khoi tao thanh cong!');
+      console.log('Firebase initialized successfully!');
     } catch (error) {
-      console.error('Loi khoi tao Firebase:', error);
-      alert('Khong the khoi tao Firebase. Vui long kiem tra lai cau hinh!');
+      console.error('Firebase initialization error:', error);
+      alert('Failed to initialize Firebase. Please check configuration!');
     }
 
     const auth = firebase.auth();
 
-    // Kiem tra trang thai dang nhap
+    // Kiểm tra trạng thái đăng nhập
     auth.onAuthStateChanged(user => {
       if (!user || !localStorage.getItem('isLoggedIn')) {
         window.location.href = 'login.html';
       }
     });
 
-    // Ham dang xuat
+    // Hàm đăng xuất
     function logout() {
       auth.signOut().then(() => {
         localStorage.removeItem('isLoggedIn');
-        localStorage.removeItem('userId');
         window.location.href = 'login.html';
       }).catch(error => {
         console.error('Logout error:', error);
@@ -414,218 +394,203 @@
       });
     }
 
-    // Khai bao bien Serial o dau ma
+    // Biến toàn cục cho Serial
     let port = null;
     let writer = null;
     let reader = null;
-    let serialBuffer = ""; // Bien de luu tru cac chunk du lieu tu Serial
+    let serialBuffer = "";
+    let isCountingDown = false;
+    let countdownInterval = null;
 
-    // Cap nhat thoi gian hien tai
-// Cập nhật thời gian hiện tại và gửi mỗi giây
-// Cập nhật thời gian hiện tại và gửi mỗi giây
-function updateCurrentTime() {
-  const now = new Date();
-  const time = now.toLocaleTimeString('en-US', { hour12: false }); // Định dạng HH:MM:SS
-  const date = now.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+    // Chuyển đổi chế độ
+    const realtimeSection = document.getElementById('realtimeSection');
+    const countdownSection = document.getElementById('countdownSection');
+    const modeInputs = document.querySelectorAll('input[name="mode"]');
 
-  document.getElementById('currentTime').textContent = time;
-  document.getElementById('currentDate').textContent = date;
+    modeInputs.forEach(input => {
+      input.addEventListener('change', () => {
+        if (input.value === 'realtime') {
+          realtimeSection.style.display = 'block';
+          countdownSection.style.display = 'none';
+          clearInterval(countdownInterval);
+          isCountingDown = false;
+          document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
+        } else {
+          realtimeSection.style.display = 'none';
+          countdownSection.style.display = 'block';
+          startCountdown();
+        }
+      });
+    });
 
-  // Không gửi dữ liệu tự động mỗi giây nữa
-  // Chỉ đồng bộ RTC khi cần qua readSerialData()
-}
+    // Cập nhật thời gian thực
+    function updateCurrentTime() {
+      const now = new Date();
+      const time = now.toLocaleTimeString('en-US', { hour12: false });
+      document.getElementById('currentTime').textContent = time;
+    }
 
-setInterval(updateCurrentTime, 1000);
-updateCurrentTime();
+    setInterval(updateCurrentTime, 1000);
+    updateCurrentTime();
 
-let countdownInterval;
-let isCountingDown = false;
-
-function startCountdown() {
-  clearInterval(countdownInterval);
-
-  const endDateInput = document.getElementById('endDate').value;
-  const endTimeInput = document.getElementById('endTime').value;
-
-  if (!endDateInput || !endTimeInput) {
-    isCountingDown = false;
-    document.getElementById('days').childNodes[0].textContent = '00';
-    document.getElementById('hours').childNodes[0].textContent = '00';
-    document.getElementById('minutes').childNodes[0].textContent = '00';
-    document.getElementById('seconds').childNodes[0].textContent = '00';
-    return;
-  }
-
-  isCountingDown = true;
-  const endDateTime = new Date(`${endDateInput}T${endTimeInput}`).getTime();
-
-  countdownInterval = setInterval(() => {
-    const now = new Date().getTime();
-    const distance = endDateTime - now;
-
-    if (distance < 0) {
+    // Khởi động đếm ngược
+    function startCountdown() {
       clearInterval(countdownInterval);
-      isCountingDown = false;
-      document.getElementById('days').childNodes[0].textContent = '00';
-      document.getElementById('hours').childNodes[0].textContent = '00';
-      document.getElementById('minutes').childNodes[0].textContent = '00';
-      document.getElementById('seconds').childNodes[0].textContent = '00';
-      alert('Countdown has ended!');
-      return;
-    }
+      const endDateInput = document.getElementById('endDate').value;
+      const endTimeInput = document.getElementById('endTime').value;
 
-    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-    document.getElementById('days').childNodes[0].textContent = String(days).padStart(2, '0');
-    document.getElementById('hours').childNodes[0].textContent = String(hours).padStart(2, '0');
-    document.getElementById('minutes').childNodes[0].textContent = String(minutes).padStart(2, '0');
-    document.getElementById('seconds').childNodes[0].textContent = String(seconds).padStart(2, '0');
-  }, 1000);
-}
-
-document.getElementById('endDate').addEventListener('change', startCountdown);
-document.getElementById('endTime').addEventListener('change', startCountdown);
-
-async function connectToSerial() {
-  if (!navigator.serial) {
-    alert('Web Serial API không được hỗ trợ trên trình duyệt này. Vui lòng sử dụng Chrome hoặc Edge.');
-    return;
-  }
-
-  try {
-    port = await navigator.serial.requestPort();
-    await port.open({ baudRate: 9600 });
-    writer = port.writable.getWriter();
-    reader = port.readable.getReader();
-    document.getElementById('connectButton').disabled = true;
-    document.getElementById('disconnectButton').disabled = false;
-    alert('Kết nối Serial thành công!');
-    readSerialData();
-  } catch (error) {
-    console.error('Lỗi kết nối Serial:', error);
-    alert('Không thể kết nối với Serial: ' + error.message);
-  }
-}
-
-async function disconnectFromSerial() {
-  try {
-    if (writer) {
-      await writer.releaseLock();
-      writer = null;
-    }
-    if (reader) {
-      await reader.releaseLock();
-      reader = null;
-    }
-    if (port) {
-      await port.close();
-      port = null;
-    }
-    document.getElementById('connectButton').disabled = false;
-    document.getElementById('disconnectButton').disabled = true;
-    alert('Đã ngắt kết nối Serial!');
-  } catch (error) {
-    console.error('Lỗi ngắt kết nối Serial:', error);
-    alert('Không thể ngắt kết nối Serial: ' + error.message);
-  }
-}
-
-async function readSerialData() {
-  while (true) {
-    try {
-      const { value, done } = await reader.read();
-      if (done) {
-        console.log('Reader has been closed');
-        break;
+      if (!endDateInput || !endTimeInput) {
+        isCountingDown = false;
+        document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
+        return;
       }
-      const chunk = new TextDecoder().decode(value);
-      serialBuffer += chunk;
-      let lines = serialBuffer.split('\n');
-      serialBuffer = lines.pop();
-      for (let line of lines) {
-        line = line.trim();
-        if (line) {
-          console.log('Nhận từ Serial:', line);
-          if (line === "REQUEST_TIME") {
-            const now = new Date();
-            const time = now.toLocaleTimeString('en-US', { hour12: false });
-            const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const timeMessage = `SET_TIME:${date} ${time}`;
-            const encoder = new TextEncoder();
-            await writer.write(encoder.encode(timeMessage + '\n'));
-            console.log('Gửi thời gian đồng bộ:', timeMessage);
+
+      isCountingDown = true;
+      const endDateTime = new Date(`${endDateInput}T${endTimeInput}`).getTime();
+
+      countdownInterval = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = endDateTime - now;
+
+        if (distance < 0) {
+          clearInterval(countdownInterval);
+          isCountingDown = false;
+          document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
+          alert('Countdown has ended!');
+          return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        document.getElementById('countdownTimer').textContent = 
+          `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+      }, 1000);
+    }
+
+    document.getElementById('endDate').addEventListener('change', startCountdown);
+    document.getElementById('endTime').addEventListener('change', startCountdown);
+
+    // Kết nối Serial
+    async function connectToSerial() {
+      if (!navigator.serial) {
+        alert('Web Serial API not supported. Please use Chrome or Edge.');
+        return;
+      }
+
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+        writer = port.writable.getWriter();
+        reader = port.readable.getReader();
+        document.getElementById('connectButton').disabled = true;
+        document.getElementById('disconnectButton').disabled = false;
+        alert('Serial connection established!');
+        readSerialData();
+      } catch (error) {
+        console.error('Serial connection error:', error);
+        alert('Failed to connect to Serial: ' + error.message);
+      }
+    }
+
+    // Ngắt kết nối Serial
+    async function disconnectFromSerial() {
+      try {
+        if (writer) {
+          await writer.releaseLock();
+          writer = null;
+        }
+        if (reader) {
+          await reader.releaseLock();
+          reader = null;
+        }
+        if (port) {
+          await port.close();
+          port = null;
+        }
+        document.getElementById('connectButton').disabled = false;
+        document.getElementById('disconnectButton').disabled = true;
+        alert('Serial connection closed!');
+      } catch (error) {
+        console.error('Serial disconnection error:', error);
+        alert('Failed to disconnect Serial: ' + error.message);
+      }
+    }
+
+    // Đọc dữ liệu Serial
+    async function readSerialData() {
+      while (true) {
+        try {
+          const { value, done } = await reader.read();
+          if (done) {
+            console.log('Reader closed');
+            break;
           }
+          const chunk = new TextDecoder().decode(value);
+          serialBuffer += chunk;
+          let lines = serialBuffer.split('\n');
+          serialBuffer = lines.pop();
+          for (let line of lines) {
+            line = line.trim();
+            if (line) {
+              console.log('Received from Serial:', line);
+              if (line === "REQUEST_TIME") {
+                const now = new Date();
+                const time = now.toLocaleTimeString('en-US', { hour12: false });
+                const date = now.toLocaleDateString('en-US', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                });
+                const timeMessage = `SET_TIME:${date} ${time}`;
+                const encoder = new TextEncoder();
+                await writer.write(encoder.encode(timeMessage + '\n'));
+                console.log('Sent sync time:', timeMessage);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Serial read error:', error);
+          break;
         }
       }
-    } catch (error) {
-      console.error('Lỗi đọc Serial:', error);
-      break;
     }
-  }
-}
 
-async function sendCurrentTimeToArduino() {
-  // Không dùng hàm này để gửi dữ liệu hiển thị nữa
-  if (!port || !writer) {
-    console.log('Chưa kết nối Serial, không thể gửi thời gian');
-    return;
-  }
-  const now = new Date();
-  const time = now.toLocaleTimeString('en-US', { hour12: false });
-  const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const timeMessage = `SET_TIME:${date} ${time}`; // Chỉ đồng bộ RTC
-  try {
-    const encoder = new TextEncoder();
-    await writer.write(encoder.encode(timeMessage + '\n'));
-    console.log('Gửi thời gian tự động:', timeMessage);
-  } catch (error) {
-    console.error('Lỗi gửi thời gian tự động:', error);
-  }
-}
+    // Gửi dữ liệu đến LED Matrix
+    async function sendToLedMatrix() {
+      if (!port || !writer) {
+        alert('Please connect to Serial first!');
+        return;
+      }
 
-async function sendToLedMatrix() {
-  if (!port || !writer) {
-    alert('Vui lòng kết nối với Serial trước!');
-    return;
-  }
-  let message;
-  if (!isCountingDown) {
-    const currentTime = document.getElementById('currentTime').textContent; // HH:MM:SS
-    message = `${currentTime}`;
-  } else {
-    const days = document.getElementById('days').childNodes[0].textContent;
-    const hours = document.getElementById('hours').childNodes[0].textContent;
-    const minutes = document.getElementById('minutes').childNodes[0].textContent;
-    const seconds = document.getElementById('seconds').childNodes[0].textContent;
-    let totalHours = parseInt(days) * 24 + parseInt(hours);
-    if (totalHours > 99) totalHours = 99;
-    message = `${String(totalHours).padStart(2, '0')}:${minutes}:${seconds}`;
-  }
-  try {
-    console.log('Gửi dữ liệu qua Serial:', message);
-    const encoder = new TextEncoder();
-    await writer.write(encoder.encode(message + '\n'));
-    alert('Dữ liệu đã được gửi đến LED Matrix!');
-  } catch (error) {
-    console.error('Lỗi gửi dữ liệu:', error);
-    alert('Không thể gửi dữ liệu: ' + error.message);
-  }
-}
+      let message;
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      if (mode === 'realtime') {
+        message = document.getElementById('currentTime').textContent;
+      } else {
+        message = document.getElementById('countdownTimer').textContent;
+      }
 
-document.addEventListener('keydown', function(event) {
-  if (event.ctrlKey && event.keyCode === 85) {
-    event.preventDefault();
-    return false;
-  }
-});
-</script>
+      try {
+        console.log('Sending to Serial:', message);
+        const encoder = new TextEncoder();
+        await writer.write(encoder.encode(message + '\n'));
+        alert('Data sent to LED Matrix!');
+      } catch (error) {
+        console.error('Send data error:', error);
+        alert('Failed to send data: ' + error.message);
+      }
+    }
+
+    // Ngăn chặn xem mã nguồn
+    document.addEventListener('keydown', function(event) {
+      if (event.ctrlKey && event.keyCode === 85) {
+        event.preventDefault();
+        return false;
+      }
+    });
+  </script>
 </body>
 </html>
