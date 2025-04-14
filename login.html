@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <style>
+    /* Giữ nguyên CSS của file mới */
     :root {
       --primary: #00f0ff;
       --secondary: #ff00ff;
@@ -435,10 +436,11 @@
         const newUserId = `user${newUserNumber}`;
         console.log('Số lượng người dùng hiện tại:', userCount, 'New User ID:', newUserId);
 
+        // Lưu dữ liệu vào Firestore giống như file cũ
         await db.collection('users').doc(newUserId).set({
           username: username,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          password: password // Thêm trường password
+          password: password, // Lưu mật khẩu (giống file cũ, nhưng không khuyến nghị)
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         console.log('Lưu dữ liệu vào Firestore thành công:', newUserId);
 
@@ -469,13 +471,23 @@
       }
 
       try {
+        // Kiểm tra sự tồn tại của username trong Firestore (giống file cũ)
+        const usersRef = db.collection('users');
+        const query = usersRef.where('username', '==', username);
+        const snapshot = await query.get();
+
+        if (snapshot.empty) {
+          showCustomAlert('Tài khoản hoặc mật khẩu không đúng. Vui lòng thử lại!');
+          return;
+        }
+
         const email = `${username}@ledmatrix.com`;
         await auth.signInWithEmailAndPassword(email, password);
         localStorage.setItem('isLoggedIn', 'true');
         window.location.href = 'index.html';
       } catch (error) {
         console.error('Lỗi đăng nhập:', error);
-        showCustomAlert('Tên đăng nhập hoặc mật khẩu không đúng!');
+        showCustomAlert('Tài khoản hoặc mật khẩu không đúng. Vui lòng thử lại!');
       }
     }
 
