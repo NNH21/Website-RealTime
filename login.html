@@ -438,7 +438,7 @@
         await db.collection('users').doc(newUserId).set({
           username: username,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          uid: userCredential.user.uid
+          password: password // Thêm trường password
         });
         console.log('Lưu dữ liệu vào Firestore thành công:', newUserId);
 
