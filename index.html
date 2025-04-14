@@ -439,14 +439,9 @@
     });
   
     // Cập nhật thời gian thực
-    function updateCurrentTime() {
-      const now = new Date();
-      const time = now.toLocaleTimeString('en-US', { hour12: false });
-      document.getElementById('currentTime').textContent = time;
+    function updateCurrentTime(timeStr) {
+      document.getElementById('currentTime').textContent = timeStr;
     }
-  
-    setInterval(updateCurrentTime, 1000);
-    updateCurrentTime();
   
     // Khởi động đếm ngược
     function startCountdown() {
@@ -584,6 +579,28 @@
                 const timeMessage = `SET_TIME:${date.split('-')[2]}${date.split('-')[1]}${date.split('-')[0]} ${time}`;
                 await writer.write(new TextEncoder().encode(timeMessage + '\n'));
                 console.log('Sent sync time:', timeMessage);
+              } else if (line.startsWith("TIME:")) {
+                const timeStr = line.substring(5);
+                if (timeStr !== "Err") {
+                  updateCurrentTime(timeStr);
+                  // Gửi thời gian đến LED Matrix nếu ở chế độ Real-Time
+                  const mode = document.querySelector('input[name="mode"]:checked').value;
+                  if (mode === 'realtime' && port && writer) {
+                    await writer.write(new TextEncoder().encode(`START_REALTIME:${timeStr}\n`));
+                    console.log('Sent to LED Matrix:', `START_REALTIME:${timeStr}`);
+                  }
+                } else {
+                  updateCurrentTime("Error");
+                }
+              } else if (line.startsWith("COUNTDOWN:")) {
+                const countdownStr = line.substring(10);
+                document.getElementById('countdownTimer').textContent = countdownStr;
+                // Gửi countdown đến LED Matrix nếu ở chế độ Countdown
+                const mode = document.querySelector('input[name="mode"]:checked').value;
+                if (mode === 'countdown' && port && writer) {
+                  await writer.write(new TextEncoder().encode(`START_COUNTDOWN:${countdownStr}\n`));
+                  console.log('Sent to LED Matrix:', `START_COUNTDOWN:${countdownStr}`);
+                }
               }
             }
           }
@@ -604,15 +621,13 @@
       const mode = document.querySelector('input[name="mode"]:checked').value;
       let message;
       if (mode === 'realtime') {
-        const now = new Date();
-        const time = now.toLocaleTimeString('en-US', { hour12: false });
-        message = `START_REALTIME:${time}`;
+        const timeStr = document.getElementById('currentTime').textContent;
+        message = `START_REALTIME:${timeStr}`;
         // Restart sync interval to ensure continuous updates
         clearInterval(realTimeSyncInterval);
         realTimeSyncInterval = setInterval(async () => {
-          const now = new Date();
-          const time = now.toLocaleTimeString('en-US', { hour12: false });
-          const syncMessage = `START_REALTIME:${time}`;
+          const timeStr = document.getElementById('currentTime').textContent;
+          const syncMessage = `START_REALTIME:${timeStr}`;
           try {
             await writer.write(new TextEncoder().encode(syncMessage + '\n'));
             console.log('Periodic sync time:', syncMessage);
