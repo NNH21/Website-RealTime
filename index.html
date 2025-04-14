@@ -395,7 +395,40 @@
     let serialBuffer = "";
     let isCountingDown = false;
     let countdownInterval = null;
-    let realTimeSyncInterval = null;
+  
+    // Hàm lấy thời gian Việt Nam
+    function getVietnamTime() {
+      const now = new Date();
+      return {
+        dateTime: now.toLocaleString('en-US', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        }),
+        timeOnly: now.toLocaleTimeString('en-US', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        })
+      };
+    }
+  
+    // Cập nhật thời gian thực trên giao diện
+    function updateCurrentTime() {
+      const { timeOnly } = getVietnamTime();
+      document.getElementById('currentTime').textContent = timeOnly;
+    }
+  
+    // Cập nhật thời gian mỗi giây
+    setInterval(updateCurrentTime, 1000);
+    updateCurrentTime(); // Cập nhật ngay lập tức
   
     // Chuyển đổi chế độ
     const realtimeSection = document.getElementById('realtimeSection');
@@ -408,28 +441,14 @@
           realtimeSection.style.display = 'block';
           countdownSection.style.display = 'none';
           clearInterval(countdownInterval);
-          clearInterval(realTimeSyncInterval);
           isCountingDown = false;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
           if (port && writer) {
             writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
-            // Start periodic sync for real-time mode
-            realTimeSyncInterval = setInterval(async () => {
-              const now = new Date();
-              const time = now.toLocaleTimeString('en-US', { hour12: false });
-              const message = `START_REALTIME:${time}`;
-              try {
-                await writer.write(new TextEncoder().encode(message + '\n'));
-                console.log('Periodic sync time:', message);
-              } catch (error) {
-                console.error('Periodic sync error:', error);
-              }
-            }, 1000);
           }
         } else {
           realtimeSection.style.display = 'none';
           countdownSection.style.display = 'block';
-          clearInterval(realTimeSyncInterval);
           if (port && writer) {
             writer.write(new TextEncoder().encode("STOP_REALTIME\n"));
           }
@@ -437,11 +456,6 @@
         }
       });
     });
-  
-    // Cập nhật thời gian thực
-    function updateCurrentTime(timeStr) {
-      document.getElementById('currentTime').textContent = timeStr;
-    }
   
     // Khởi động đếm ngược
     function startCountdown() {
@@ -502,21 +516,14 @@
         document.getElementById('disconnectButton').disabled = false;
         alert('Serial connection established!');
         readSerialData();
-        // Trigger mode initialization
-        const mode = document.querySelector('input[name="mode"]:checked').value;
-        if (mode === 'realtime') {
-          realTimeSyncInterval = setInterval(async () => {
-            const now = new Date();
-            const time = now.toLocaleTimeString('en-US', { hour12: false });
-            const message = `START_REALTIME:${time}`;
-            try {
-              await writer.write(new TextEncoder().encode(message + '\n'));
-              console.log('Periodic sync time:', message);
-            } catch (error) {
-              console.error('Periodic sync error:', error);
-            }
-          }, 1000);
-        }
+  
+        // Gửi thời gian Việt Nam để đồng bộ RTC ngay khi kết nối
+        const { dateTime } = getVietnamTime();
+        const [date, time] = dateTime.split(', ');
+        const [month, day, year] = date.split('/');
+        const timeMessage = `SET_TIME:${day}${month}${year} ${time}`;
+        await writer.write(new TextEncoder().encode(timeMessage + '\n'));
+        console.log('Sent sync time:', timeMessage);
       } catch (error) {
         console.error('Serial connection error:', error);
         alert('Failed to connect to Serial: ' + error.message);
@@ -542,7 +549,6 @@
         }
         document.getElementById('connectButton').disabled = false;
         document.getElementById('disconnectButton').disabled = true;
-        clearInterval(realTimeSyncInterval);
         clearInterval(countdownInterval);
         alert('Serial connection closed!');
       } catch (error) {
@@ -569,38 +575,24 @@
             if (line) {
               console.log('Received from Serial:', line);
               if (line === "RT") {
-                const now = new Date();
-                const date = now.toLocaleDateString('en-US', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric'
-                }).split('/').reverse().join('-');
-                const time = now.toLocaleTimeString('en-US', { hour12: false });
-                const timeMessage = `SET_TIME:${date.split('-')[2]}${date.split('-')[1]}${date.split('-')[0]} ${time}`;
+                // Phản hồi với thời gian Việt Nam khi Arduino yêu cầu đồng bộ
+                const { dateTime } = getVietnamTime();
+                const [date, time] = dateTime.split(', ');
+                const [month, day, year] = date.split('/');
+                const timeMessage = `SET_TIME:${day}${month}${year} ${time}`;
                 await writer.write(new TextEncoder().encode(timeMessage + '\n'));
                 console.log('Sent sync time:', timeMessage);
               } else if (line.startsWith("TIME:")) {
                 const timeStr = line.substring(5);
                 if (timeStr !== "Err") {
-                  updateCurrentTime(timeStr);
-                  // Gửi thời gian đến LED Matrix nếu ở chế độ Real-Time
-                  const mode = document.querySelector('input[name="mode"]:checked').value;
-                  if (mode === 'realtime' && port && writer) {
-                    await writer.write(new TextEncoder().encode(`START_REALTIME:${timeStr}\n`));
-                    console.log('Sent to LED Matrix:', `START_REALTIME:${timeStr}`);
-                  }
+                  // Cập nhật thời gian từ Arduino nếu cần
+                  updateCurrentTime(); // Vẫn ưu tiên thời gian Việt Nam từ client
                 } else {
-                  updateCurrentTime("Error");
+                  document.getElementById('currentTime').textContent = "Error";
                 }
               } else if (line.startsWith("COUNTDOWN:")) {
                 const countdownStr = line.substring(10);
                 document.getElementById('countdownTimer').textContent = countdownStr;
-                // Gửi countdown đến LED Matrix nếu ở chế độ Countdown
-                const mode = document.querySelector('input[name="mode"]:checked').value;
-                if (mode === 'countdown' && port && writer) {
-                  await writer.write(new TextEncoder().encode(`START_COUNTDOWN:${countdownStr}\n`));
-                  console.log('Sent to LED Matrix:', `START_COUNTDOWN:${countdownStr}`);
-                }
               }
             }
           }
@@ -621,23 +613,10 @@
       const mode = document.querySelector('input[name="mode"]:checked').value;
       let message;
       if (mode === 'realtime') {
-        const timeStr = document.getElementById('currentTime').textContent;
-        message = `START_REALTIME:${timeStr}`;
-        // Restart sync interval to ensure continuous updates
-        clearInterval(realTimeSyncInterval);
-        realTimeSyncInterval = setInterval(async () => {
-          const timeStr = document.getElementById('currentTime').textContent;
-          const syncMessage = `START_REALTIME:${timeStr}`;
-          try {
-            await writer.write(new TextEncoder().encode(syncMessage + '\n'));
-            console.log('Periodic sync time:', syncMessage);
-          } catch (error) {
-            console.error('Periodic sync error:', error);
-          }
-        }, 1000);
+        const { timeOnly } = getVietnamTime();
+        message = `START_REALTIME:${timeOnly}`;
       } else {
         message = `START_COUNTDOWN:${document.getElementById('countdownTimer').textContent}`;
-        clearInterval(realTimeSyncInterval);
       }
   
       try {
