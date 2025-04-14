@@ -334,6 +334,7 @@
   <!-- Particles.js -->
   <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
 
+<!-- Replace the existing <script> section in the HTML with this -->
   <script>
     // Khởi tạo Particles.js
     particlesJS("particles-js", {
@@ -353,7 +354,7 @@
       },
       retina_detect: true
     });
-
+  
     // Cấu hình Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyCGOa3EHsEMAjYIwR3eU0j2PpxTmQ0vOD4",
@@ -364,18 +365,18 @@
       messagingSenderId: "742918396384",
       appId: "1:742918396384:web:e00297fb3b8e1db6783385"
     };
-
+  
     // Khởi tạo Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
-
+  
     // Kiểm tra trạng thái đăng nhập
     auth.onAuthStateChanged(user => {
       if (!user || !localStorage.getItem('isLoggedIn')) {
         window.location.href = 'login.html';
       }
     });
-
+  
     // Đăng xuất
     function logout() {
       auth.signOut().then(() => {
@@ -386,7 +387,7 @@
         alert('Error logging out: ' + error.message);
       });
     }
-
+  
     // Biến toàn cục
     let port = null;
     let writer = null;
@@ -395,108 +396,108 @@
     let isCountingDown = false;
     let countdownInterval = null;
     let realTimeSyncInterval = null;
-
+  
     // Chuyển đổi chế độ
     const realtimeSection = document.getElementById('realtimeSection');
     const countdownSection = document.getElementById('countdownSection');
     const modeInputs = document.querySelectorAll('input[name="mode"]');
-
-// Add this after the modeInputs event listener
-
-modeInputs.forEach(input => {
-  input.addEventListener('change', () => {
-    if (input.value === 'realtime') {
-      realtimeSection.style.display = 'block';
-      countdownSection.style.display = 'none';
-      clearInterval(countdownInterval);
-      clearInterval(realTimeSyncInterval); // Clear any existing interval
-      isCountingDown = false;
-      document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
-      if (port && writer) {
-        writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
-        // Start periodic sync for real-time mode
-        realTimeSyncInterval = setInterval(async () => {
-          const now = new Date();
-          const time = now.toLocaleTimeString('en-US', { hour12: false });
-          const message = `START_REALTIME:${time}`;
-          try {
-            await writer.write(new TextEncoder().encode(message + '\n'));
-            console.log('Periodic sync time:', message);
-          } catch (error) {
-            console.error('Periodic sync error:', error);
+  
+    modeInputs.forEach(input => {
+      input.addEventListener('change', () => {
+        if (input.value === 'realtime') {
+          realtimeSection.style.display = 'block';
+          countdownSection.style.display = 'none';
+          clearInterval(countdownInterval);
+          clearInterval(realTimeSyncInterval);
+          isCountingDown = false;
+          document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
+          if (port && writer) {
+            writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
+            // Start periodic sync for real-time mode
+            realTimeSyncInterval = setInterval(async () => {
+              const now = new Date();
+              const time = now.toLocaleTimeString('en-US', { hour12: false });
+              const message = `START_REALTIME:${time}`;
+              try {
+                await writer.write(new TextEncoder().encode(message + '\n'));
+                console.log('Periodic sync time:', message);
+              } catch (error) {
+                console.error('Periodic sync error:', error);
+              }
+            }, 1000);
           }
-        }, 1000); // Sync every second
-      }
-    } else {
-      realtimeSection.style.display = 'none';
-      countdownSection.style.display = 'block';
-      clearInterval(realTimeSyncInterval); // Stop real-time sync
-      if (port && writer) {
-        writer.write(new TextEncoder().encode("STOP_REALTIME\n"));
-      }
-      startCountdown();
-    }
-  });
-});
-
-
+        } else {
+          realtimeSection.style.display = 'none';
+          countdownSection.style.display = 'block';
+          clearInterval(realTimeSyncInterval);
+          if (port && writer) {
+            writer.write(new TextEncoder().encode("STOP_REALTIME\n"));
+          }
+          startCountdown();
+        }
+      });
+    });
+  
     // Cập nhật thời gian thực
     function updateCurrentTime() {
       const now = new Date();
       const time = now.toLocaleTimeString('en-US', { hour12: false });
       document.getElementById('currentTime').textContent = time;
     }
-
+  
     setInterval(updateCurrentTime, 1000);
     updateCurrentTime();
-
+  
     // Khởi động đếm ngược
     function startCountdown() {
       clearInterval(countdownInterval);
       const endDateInput = document.getElementById('endDate').value;
       const endTimeInput = document.getElementById('endTime').value;
-
+  
       if (!endDateInput || !endTimeInput) {
         isCountingDown = false;
         document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
         return;
       }
-
+  
       isCountingDown = true;
       const endDateTime = new Date(`${endDateInput}T${endTimeInput}`).getTime();
-
+  
       countdownInterval = setInterval(() => {
         const now = new Date().getTime();
         const distance = endDateTime - now;
-
+  
         if (distance < 0) {
           clearInterval(countdownInterval);
           isCountingDown = false;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
+          if (port && writer) {
+            writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
+          }
           alert('Countdown has ended!');
           return;
         }
-
+  
         const days = Math.floor(distance / (1000 * 60 * 60 * 24));
         const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
+  
         document.getElementById('countdownTimer').textContent = 
           `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
       }, 1000);
     }
-
+  
     document.getElementById('endDate').addEventListener('change', startCountdown);
     document.getElementById('endTime').addEventListener('change', startCountdown);
-
+  
     // Kết nối Serial
     async function connectToSerial() {
       if (!navigator.serial) {
         alert('Web Serial API not supported. Please use Chrome or Edge.');
         return;
       }
-
+  
       try {
         port = await navigator.serial.requestPort();
         await port.open({ baudRate: 9600 });
@@ -506,41 +507,55 @@ modeInputs.forEach(input => {
         document.getElementById('disconnectButton').disabled = false;
         alert('Serial connection established!');
         readSerialData();
+        // Trigger mode initialization
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        if (mode === 'realtime') {
+          realTimeSyncInterval = setInterval(async () => {
+            const now = new Date();
+            const time = now.toLocaleTimeString('en-US', { hour12: false });
+            const message = `START_REALTIME:${time}`;
+            try {
+              await writer.write(new TextEncoder().encode(message + '\n'));
+              console.log('Periodic sync time:', message);
+            } catch (error) {
+              console.error('Periodic sync error:', error);
+            }
+          }, 1000);
+        }
       } catch (error) {
         console.error('Serial connection error:', error);
         alert('Failed to connect to Serial: ' + error.message);
       }
     }
-
-
-    
-// Update disconnectFromSerial to clear the interval
-async function disconnectFromSerial() {
-  try {
-    if (writer) {
-      await writer.write(new TextEncoder().encode("STOP_REALTIME\n"));
-      await writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
-      await writer.releaseLock();
-      writer = null;
+  
+    // Ngắt kết nối Serial
+    async function disconnectFromSerial() {
+      try {
+        if (writer) {
+          await writer.write(new TextEncoder().encode("STOP_REALTIME\n"));
+          await writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
+          await writer.releaseLock();
+          writer = null;
+        }
+        if (reader) {
+          await reader.releaseLock();
+          reader = null;
+        }
+        if (port) {
+          await port.close();
+          port = null;
+        }
+        document.getElementById('connectButton').disabled = false;
+        document.getElementById('disconnectButton').disabled = true;
+        clearInterval(realTimeSyncInterval);
+        clearInterval(countdownInterval);
+        alert('Serial connection closed!');
+      } catch (error) {
+        console.error('Serial disconnection error:', error);
+        alert('Failed to disconnect Serial: ' + error.message);
+      }
     }
-    if (reader) {
-      await reader.releaseLock();
-      reader = null;
-    }
-    if (port) {
-      await port.close();
-      port = null;
-    }
-    document.getElementById('connectButton').disabled = false;
-    document.getElementById('disconnectButton').disabled = true;
-    clearInterval(realTimeSyncInterval); // Clear sync interval on disconnect
-    alert('Serial connection closed!');
-  } catch (error) {
-    console.error('Serial disconnection error:', error);
-    alert('Failed to disconnect Serial: ' + error.message);
-  }
-}
-
+  
     // Đọc dữ liệu Serial
     async function readSerialData() {
       while (true) {
@@ -560,13 +575,13 @@ async function disconnectFromSerial() {
               console.log('Received from Serial:', line);
               if (line === "RT") {
                 const now = new Date();
-                const time = now.toLocaleTimeString('en-US', { hour12: false });
                 const date = now.toLocaleDateString('en-US', {
                   day: '2-digit',
                   month: '2-digit',
                   year: 'numeric'
-                });
-                const timeMessage = `SET_TIME:${date} ${time}`;
+                }).split('/').reverse().join('-');
+                const time = now.toLocaleTimeString('en-US', { hour12: false });
+                const timeMessage = `SET_TIME:${date.split('-')[2]}${date.split('-')[1]}${date.split('-')[0]} ${time}`;
                 await writer.write(new TextEncoder().encode(timeMessage + '\n'));
                 console.log('Sent sync time:', timeMessage);
               }
@@ -578,24 +593,38 @@ async function disconnectFromSerial() {
         }
       }
     }
-
+  
     // Gửi dữ liệu đến LED Matrix
     async function sendToLedMatrix() {
       if (!port || !writer) {
         alert('Please connect to Serial first!');
         return;
       }
-    
+  
       const mode = document.querySelector('input[name="mode"]:checked').value;
       let message;
       if (mode === 'realtime') {
         const now = new Date();
-        const time = now.toLocaleTimeString('en-US', { hour12: false }); // Ensure format is "hh:mm:ss"
+        const time = now.toLocaleTimeString('en-US', { hour12: false });
         message = `START_REALTIME:${time}`;
+        // Restart sync interval to ensure continuous updates
+        clearInterval(realTimeSyncInterval);
+        realTimeSyncInterval = setInterval(async () => {
+          const now = new Date();
+          const time = now.toLocaleTimeString('en-US', { hour12: false });
+          const syncMessage = `START_REALTIME:${time}`;
+          try {
+            await writer.write(new TextEncoder().encode(syncMessage + '\n'));
+            console.log('Periodic sync time:', syncMessage);
+          } catch (error) {
+            console.error('Periodic sync error:', error);
+          }
+        }, 1000);
       } else {
         message = `START_COUNTDOWN:${document.getElementById('countdownTimer').textContent}`;
+        clearInterval(realTimeSyncInterval);
       }
-    
+  
       try {
         console.log('Sending to Serial:', message);
         await writer.write(new TextEncoder().encode(message + '\n'));
@@ -605,7 +634,7 @@ async function disconnectFromSerial() {
         alert('Failed to send data: ' + error.message);
       }
     }
-
+  
     // Ngăn chặn xem mã nguồn
     document.addEventListener('keydown', function(event) {
       if (event.ctrlKey && event.keyCode === 85) {
