@@ -7,7 +7,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <style>
-    /* Giữ nguyên CSS của file mới */
     :root {
       --primary: #00f0ff;
       --secondary: #ff00ff;
@@ -85,6 +84,8 @@
     .form-wrapper {
       position: relative;
       width: 100%;
+      height: 350px; /* Thêm chiều cao cố định để chứa toàn bộ nội dung */
+      overflow: hidden; /* Ẩn nội dung tràn ra ngoài */
     }
 
     .form {
@@ -94,11 +95,7 @@
       opacity: 0;
     }
 
-    #login-form.active {
-      transform: translateX(0);
-      opacity: 1;
-    }
-
+    #login-form.active,
     #register-form.active {
       transform: translateX(0);
       opacity: 1;
@@ -239,6 +236,7 @@
     @media (max-width: 1200px) {
       .login-container { max-width: 500px; padding: 2.5rem; }
       h2 { font-size: 2.5rem; }
+      .form-wrapper { height: 300px; } /* Điều chỉnh chiều cao */
       input[type="text"], input[type="password"] { padding: 0.8rem; font-size: 1.1rem; }
       button { padding: 1.2rem; font-size: 1.1rem; }
     }
@@ -246,6 +244,7 @@
     @media (max-width: 768px) {
       .login-container { max-width: 90%; padding: 2rem; }
       h2 { font-size: 2rem; }
+      .form-wrapper { height: 280px; } /* Điều chỉnh chiều cao */
       input[type="text"], input[type="password"] { padding: 0.8rem; font-size: 1rem; }
       button { padding: 1rem; font-size: 1rem; }
     }
@@ -253,6 +252,7 @@
     @media (max-width: 480px) {
       .login-container { padding: 1.5rem; }
       h2 { font-size: 1.8rem; }
+      .form-wrapper { height: 260px; } /* Điều chỉnh chiều cao */
       input[type="text"], input[type="password"] { padding: 0.7rem; font-size: 0.9rem; }
       button { padding: 0.8rem; font-size: 0.9rem; }
     }
@@ -436,10 +436,9 @@
         const newUserId = `user${newUserNumber}`;
         console.log('Số lượng người dùng hiện tại:', userCount, 'New User ID:', newUserId);
 
-        // Lưu dữ liệu vào Firestore giống như file cũ
         await db.collection('users').doc(newUserId).set({
           username: username,
-          password: password, // Lưu mật khẩu (giống file cũ, nhưng không khuyến nghị)
+          password: password,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         console.log('Lưu dữ liệu vào Firestore thành công:', newUserId);
@@ -471,7 +470,6 @@
       }
 
       try {
-        // Kiểm tra sự tồn tại của username trong Firestore (giống file cũ)
         const usersRef = db.collection('users');
         const query = usersRef.where('username', '==', username);
         const snapshot = await query.get();
