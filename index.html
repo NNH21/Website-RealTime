@@ -383,8 +383,8 @@
         localStorage.removeItem('isLoggedIn');
         window.location.href = 'login.html';
       }).catch(error => {
-        console.error('Logout error:', error);
-        alert('Error logging out: ' + error.message);
+        console.error('Lỗi đăng xuất:', error);
+        alert('Lỗi đăng xuất: ' + error.message);
       });
     }
   
@@ -395,6 +395,7 @@
     let serialBuffer = "";
     let isCountingDown = false;
     let countdownInterval = null;
+    let isConnected = false;
   
     // Hàm lấy thời gian Việt Nam
     function getVietnamTime() {
@@ -425,10 +426,8 @@
       const { timeOnly } = getVietnamTime();
       document.getElementById('currentTime').textContent = timeOnly;
     }
-  
-    // Cập nhật thời gian mỗi giây
     setInterval(updateCurrentTime, 1000);
-    updateCurrentTime(); // Cập nhật ngay lập tức
+    updateCurrentTime();
   
     // Chuyển đổi chế độ
     const realtimeSection = document.getElementById('realtimeSection');
@@ -449,9 +448,6 @@
         } else {
           realtimeSection.style.display = 'none';
           countdownSection.style.display = 'block';
-          if (port && writer) {
-            writer.write(new TextEncoder().encode("STOP_REALTIME\n"));
-          }
           startCountdown();
         }
       });
@@ -483,7 +479,7 @@
           if (port && writer) {
             writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
           }
-          alert('Countdown has ended!');
+          alert('Đếm ngược đã kết thúc!');
           return;
         }
   
@@ -503,7 +499,7 @@
     // Kết nối Serial
     async function connectToSerial() {
       if (!navigator.serial) {
-        alert('Web Serial API not supported. Please use Chrome or Edge.');
+        alert('Web Serial API không được hỗ trợ. Vui lòng sử dụng Chrome hoặc Edge.');
         return;
       }
   
@@ -512,21 +508,25 @@
         await port.open({ baudRate: 9600 });
         writer = port.writable.getWriter();
         reader = port.readable.getReader();
+        isConnected = true;
         document.getElementById('connectButton').disabled = true;
         document.getElementById('disconnectButton').disabled = false;
-        alert('Serial connection established!');
+        alert('Kết nối Serial thành công!');
         readSerialData();
   
-        // Gửi thời gian Việt Nam để đồng bộ RTC ngay khi kết nối
+        // Đồng bộ thời gian Việt Nam khi kết nối
         const { dateTime } = getVietnamTime();
         const [date, time] = dateTime.split(', ');
         const [month, day, year] = date.split('/');
         const timeMessage = `SET_TIME:${day}${month}${year} ${time}`;
         await writer.write(new TextEncoder().encode(timeMessage + '\n'));
-        console.log('Sent sync time:', timeMessage);
+        console.log('Đã gửi thời gian đồng bộ:', timeMessage);
       } catch (error) {
-        console.error('Serial connection error:', error);
-        alert('Failed to connect to Serial: ' + error.message);
+        console.error('Lỗi kết nối Serial:', error);
+        alert('Không thể kết nối Serial: ' + error.message);
+        isConnected = false;
+        document.getElementById('connectButton').disabled = false;
+        document.getElementById('disconnectButton').disabled = true;
       }
     }
   
@@ -534,7 +534,6 @@
     async function disconnectFromSerial() {
       try {
         if (writer) {
-          await writer.write(new TextEncoder().encode("STOP_REALTIME\n"));
           await writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
           await writer.releaseLock();
           writer = null;
@@ -547,23 +546,24 @@
           await port.close();
           port = null;
         }
+        isConnected = false;
         document.getElementById('connectButton').disabled = false;
         document.getElementById('disconnectButton').disabled = true;
         clearInterval(countdownInterval);
-        alert('Serial connection closed!');
+        alert('Đã ngắt kết nối Serial!');
       } catch (error) {
-        console.error('Serial disconnection error:', error);
-        alert('Failed to disconnect Serial: ' + error.message);
+        console.error('Lỗi ngắt kết nối Serial:', error);
+        alert('Không thể ngắt kết nối Serial: ' + error.message);
       }
     }
   
-    // Đọc dữ liệu Serial
+    // Đọc dữ liệu Serial với cơ chế thử lại
     async function readSerialData() {
-      while (true) {
+      while (isConnected) {
         try {
           const { value, done } = await reader.read();
           if (done) {
-            console.log('Reader closed');
+            console.log('Đã đóng reader');
             break;
           }
           const chunk = new TextDecoder().decode(value);
@@ -573,31 +573,23 @@
           for (let line of lines) {
             line = line.trim();
             if (line) {
-              console.log('Received from Serial:', line);
+              console.log('Nhận từ Serial:', line);
               if (line === "RT") {
-                // Phản hồi với thời gian Việt Nam khi Arduino yêu cầu đồng bộ
                 const { dateTime } = getVietnamTime();
                 const [date, time] = dateTime.split(', ');
                 const [month, day, year] = date.split('/');
                 const timeMessage = `SET_TIME:${day}${month}${year} ${time}`;
                 await writer.write(new TextEncoder().encode(timeMessage + '\n'));
-                console.log('Sent sync time:', timeMessage);
-              } else if (line.startsWith("TIME:")) {
-                const timeStr = line.substring(5);
-                if (timeStr !== "Err") {
-                  // Cập nhật thời gian từ Arduino nếu cần
-                  updateCurrentTime(); // Vẫn ưu tiên thời gian Việt Nam từ client
-                } else {
-                  document.getElementById('currentTime').textContent = "Error";
-                }
-              } else if (line.startsWith("COUNTDOWN:")) {
-                const countdownStr = line.substring(10);
-                document.getElementById('countdownTimer').textContent = countdownStr;
+                console.log('Đã gửi thời gian đồng bộ:', timeMessage);
               }
             }
           }
         } catch (error) {
-          console.error('Serial read error:', error);
+          console.error('Lỗi đọc Serial:', error);
+          isConnected = false;
+          alert('Mất kết nối Serial. Đang thử kết nối lại...');
+          disconnectFromSerial();
+          setTimeout(connectToSerial, 3000); // Thử kết nối lại sau 3 giây
           break;
         }
       }
@@ -605,27 +597,33 @@
   
     // Gửi dữ liệu đến LED Matrix
     async function sendToLedMatrix() {
-      if (!port || !writer) {
-        alert('Please connect to Serial first!');
+      if (!isConnected || !port || !writer) {
+        alert('Vui lòng kết nối Serial trước!');
         return;
       }
   
       const mode = document.querySelector('input[name="mode"]:checked').value;
       let message;
       if (mode === 'realtime') {
-        const { timeOnly } = getVietnamTime();
-        message = `START_REALTIME:${timeOnly}`;
+        // Đồng bộ lại thời gian nếu ở chế độ Real-Time
+        const { dateTime } = getVietnamTime();
+        const [date, time] = dateTime.split(', ');
+        const [month, day, year] = date.split('/');
+        message = `SET_TIME:${day}${month}${year} ${time}`;
       } else {
         message = `START_COUNTDOWN:${document.getElementById('countdownTimer').textContent}`;
       }
   
       try {
-        console.log('Sending to Serial:', message);
+        console.log('Gửi đến Serial:', message);
         await writer.write(new TextEncoder().encode(message + '\n'));
-        alert(`${mode === 'realtime' ? 'Real-Time' : 'Countdown'} sent to LED Matrix!`);
+        alert(`${mode === 'realtime' ? 'Thời gian thực' : 'Đếm ngược'} đã được gửi đến LED Matrix!`);
       } catch (error) {
-        console.error('Send data error:', error);
-        alert('Failed to send data: ' + error.message);
+        console.error('Lỗi gửi dữ liệu:', error);
+        alert('Không thể gửi dữ liệu: ' + error.message);
+        isConnected = false;
+        disconnectFromSerial();
+        setTimeout(connectToSerial, 3000);
       }
     }
   
