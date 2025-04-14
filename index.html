@@ -335,322 +335,305 @@
   <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
 
 <!-- Replace the existing <script> section in the HTML with this -->
-  <script>
-    // Khởi tạo Particles.js
-    particlesJS("particles-js", {
-      particles: {
-        number: { value: 80, density: { enable: true, value_area: 800 } },
-        color: { value: "#00f0ff" },
-        shape: { type: "circle" },
-        opacity: { value: 0.5, random: true },
-        size: { value: 3, random: true },
-        line_linked: { enable: true, distance: 150, color: "#ff00ff", opacity: 0.4, width: 1 },
-        move: { enable: true, speed: 2, direction: "none", random: false, straight: false, out_mode: "out", bounce: false }
-      },
-      interactivity: {
-        detect_on: "canvas",
-        events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
-        modes: { repulse: { distance: 100, duration: 0.4 }, push: { particles_nb: 4 } }
-      },
-      retina_detect: true
+<script>
+  // Khởi tạo Particles.js
+  particlesJS("particles-js", {
+    particles: {
+      number: { value: 80, density: { enable: true, value_area: 800 } },
+      color: { value: "#00f0ff" },
+      shape: { type: "circle" },
+      opacity: { value: 0.5, random: true },
+      size: { value: 3, random: true },
+      line_linked: { enable: true, distance: 150, color: "#ff00ff", opacity: 0.4, width: 1 },
+      move: { enable: true, speed: 2, direction: "none", random: false, straight: false, out_mode: "out", bounce: false }
+    },
+    interactivity: {
+      detect_on: "canvas",
+      events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
+      modes: { repulse: { distance: 100, duration: 0.4 }, push: { particles_nb: 4 } }
+    },
+    retina_detect: true
+  });
+
+  // Cấu hình Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyCGOa3EHsEMAjYIwR3eU0j2PpxTmQ0vOD4",
+    authDomain: "inforuserrealtime.firebaseapp.com",
+    databaseURL: "https://inforuserrealtime-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "inforuserrealtime",
+    storageBucket: "inforuserrealtime.firebasestorage.app",
+    messagingSenderId: "742918396384",
+    appId: "1:742918396384:web:e00297fb3b8e1db6783385"
+  };
+
+  // Khởi tạo Firebase
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  // Kiểm tra trạng thái đăng nhập
+  auth.onAuthStateChanged(user => {
+    if (!user || !localStorage.getItem('isLoggedIn')) {
+      window.location.href = 'login.html';
+    }
+  });
+
+  // Đăng xuất
+  function logout() {
+    auth.signOut().then(() => {
+      localStorage.removeItem('isLoggedIn');
+      window.location.href = 'login.html';
+    }).catch(error => {
+      console.error('Lỗi đăng xuất:', error);
+      alert('Lỗi đăng xuất: ' + error.message);
     });
-  
-    // Cấu hình Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyCGOa3EHsEMAjYIwR3eU0j2PpxTmQ0vOD4",
-      authDomain: "inforuserrealtime.firebaseapp.com",
-      databaseURL: "https://inforuserrealtime-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "inforuserrealtime",
-      storageBucket: "inforuserrealtime.firebasestorage.app",
-      messagingSenderId: "742918396384",
-      appId: "1:742918396384:web:e00297fb3b8e1db6783385"
+  }
+
+  // Biến toàn cục
+  let port = null;
+  let writer = null;
+  let reader = null;
+  let serialBuffer = "";
+  let isCountingDown = false;
+  let countdownInterval = null;
+  let isConnected = false;
+
+  // Hàm lấy thời gian Việt Nam
+  function getVietnamTime() {
+    const now = new Date();
+    return {
+      dateTime: now.toLocaleString('en-US', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }),
+      timeOnly: now.toLocaleTimeString('en-US', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
     };
-  
-    // Khởi tạo Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-  
-    // Kiểm tra trạng thái đăng nhập
-    auth.onAuthStateChanged(user => {
-      if (!user || !localStorage.getItem('isLoggedIn')) {
-        window.location.href = 'login.html';
-      }
-    });
-  
-    // Đăng xuất
-    function logout() {
-      auth.signOut().then(() => {
-        localStorage.removeItem('isLoggedIn');
-        window.location.href = 'login.html';
-      }).catch(error => {
-        console.error('Lỗi đăng xuất:', error);
-        alert('Lỗi đăng xuất: ' + error.message);
-      });
-    }
-  
-    // Biến toàn cục
-    let port = null;
-    let writer = null;
-    let reader = null;
-    let serialBuffer = "";
-    let isCountingDown = false;
-    let countdownInterval = null;
-    let isConnected = false;
-    let lastReceivedTime = "00:00"; // Thời gian nhận từ Arduino
-    let lastReceivedTimeMillis = 0; // Thời điểm nhận thời gian cuối
-  
-    // Hàm lấy thời gian Việt Nam (dự phòng nếu không nhận được từ Arduino)
-    function getVietnamTime() {
-      const now = new Date();
-      return {
-        dateTime: now.toLocaleString('en-US', {
-          timeZone: 'Asia/Ho_Chi_Minh',
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        }),
-        timeOnly: now.toLocaleTimeString('en-US', {
-          timeZone: 'Asia/Ho_Chi_Minh',
-          hour12: false,
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-      };
-    }
-  
-    // Cập nhật thời gian trên giao diện
-    function updateCurrentTime() {
-      if (isConnected && (millis() - lastReceivedTimeMillis <= 2000)) {
-        // Sử dụng thời gian từ Arduino nếu có dữ liệu gần đây (trong 2 giây)
-        document.getElementById('currentTime').textContent = lastReceivedTime;
-      } else {
-        // Dự phòng: Dùng thời gian hệ thống nếu không nhận được dữ liệu
-        const { timeOnly } = getVietnamTime();
-        document.getElementById('currentTime').textContent = timeOnly;
-      }
-    }
-    setInterval(updateCurrentTime, 1000);
-    updateCurrentTime();
-  
-    // Hàm tính thời gian hiện tại (dùng cho logic nội bộ)
-    function millis() {
-      return new Date().getTime();
-    }
-  
-    // Chuyển đổi chế độ
-    const realtimeSection = document.getElementById('realtimeSection');
-    const countdownSection = document.getElementById('countdownSection');
-    const modeInputs = document.querySelectorAll('input[name="mode"]');
-  
-    modeInputs.forEach(input => {
-      input.addEventListener('change', () => {
-        if (input.value === 'realtime') {
-          realtimeSection.style.display = 'block';
-          countdownSection.style.display = 'none';
-          clearInterval(countdownInterval);
-          isCountingDown = false;
-          document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
-          if (port && writer) {
-            writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
-          }
-        } else {
-          realtimeSection.style.display = 'none';
-          countdownSection.style.display = 'block';
-          startCountdown();
-        }
-      });
-    });
-  
-    // Khởi động đếm ngược
-    function startCountdown() {
-      clearInterval(countdownInterval);
-      const endDateInput = document.getElementById('endDate').value;
-      const endTimeInput = document.getElementById('endTime').value;
-  
-      if (!endDateInput || !endTimeInput) {
+  }
+
+  // Cập nhật thời gian thực trên giao diện
+  function updateCurrentTime() {
+    const { timeOnly } = getVietnamTime();
+    document.getElementById('currentTime').textContent = timeOnly;
+  }
+  setInterval(updateCurrentTime, 1000);
+  updateCurrentTime();
+
+  // Chuyển đổi chế độ
+  const realtimeSection = document.getElementById('realtimeSection');
+  const countdownSection = document.getElementById('countdownSection');
+  const modeInputs = document.querySelectorAll('input[name="mode"]');
+
+  modeInputs.forEach(input => {
+    input.addEventListener('change', () => {
+      if (input.value === 'realtime') {
+        realtimeSection.style.display = 'block';
+        countdownSection.style.display = 'none';
+        clearInterval(countdownInterval);
         isCountingDown = false;
         document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
-        return;
-      }
-  
-      isCountingDown = true;
-      const endDateTime = new Date(`${endDateInput}T${endTimeInput}`).getTime();
-  
-      countdownInterval = setInterval(() => {
-        const now = new Date().getTime();
-        const distance = endDateTime - now;
-  
-        if (distance < 0) {
-          clearInterval(countdownInterval);
-          isCountingDown = false;
-          document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
-          if (port && writer) {
-            writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
-          }
-          alert('Đếm ngược đã kết thúc!');
-          return;
+        if (port && writer) {
+          writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
         }
-  
-        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-  
-        document.getElementById('countdownTimer').textContent = 
-          `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
-      }, 1000);
-    }
-  
-    document.getElementById('endDate').addEventListener('change', startCountdown);
-    document.getElementById('endTime').addEventListener('change', startCountdown);
-  
-    // Kết nối Serial
-    async function connectToSerial() {
-      if (!navigator.serial) {
-        alert('Web Serial API không được hỗ trợ. Vui lòng sử dụng Chrome hoặc Edge.');
-        return;
-      }
-  
-      try {
-        port = await navigator.serial.requestPort();
-        await port.open({ baudRate: 9600 });
-        writer = port.writable.getWriter();
-        reader = port.readable.getReader();
-        isConnected = true;
-        document.getElementById('connectButton').disabled = true;
-        document.getElementById('disconnectButton').disabled = false;
-        alert('Kết nối Serial thành công!');
-        readSerialData();
-  
-        // Đồng bộ thời gian Việt Nam khi kết nối
-        const { dateTime } = getVietnamTime();
-        const [date, time] = dateTime.split(', ');
-        const [month, day, year] = date.split('/');
-        const timeMessage = `SET_TIME:${day}${month}${year} ${time}`;
-        await writer.write(new TextEncoder().encode(timeMessage + '\n'));
-        console.log('Đã gửi thời gian đồng bộ:', timeMessage);
-      } catch (error) {
-        console.error('Lỗi kết nối Serial:', error);
-        alert('Không thể kết nối Serial: ' + error.message);
-        isConnected = false;
-        document.getElementById('connectButton').disabled = false;
-        document.getElementById('disconnectButton').disabled = true;
-      }
-    }
-  
-    // Ngắt kết nối Serial
-    async function disconnectFromSerial() {
-      try {
-        if (writer) {
-          await writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
-          await writer.releaseLock();
-          writer = null;
-        }
-        if (reader) {
-          await reader.releaseLock();
-          reader = null;
-        }
-        if (port) {
-          await port.close();
-          port = null;
-        }
-        isConnected = false;
-        document.getElementById('connectButton').disabled = false;
-        document.getElementById('disconnectButton').disabled = true;
-        clearInterval(countdownInterval);
-        alert('Đã ngắt kết nối Serial!');
-      } catch (error) {
-        console.error('Lỗi ngắt kết nối Serial:', error);
-        alert('Không thể ngắt kết nối Serial: ' + error.message);
-      }
-    }
-  
-    // Đọc dữ liệu Serial với cơ chế thử lại
-    async function readSerialData() {
-      while (isConnected) {
-        try {
-          const { value, done } = await reader.read();
-          if (done) {
-            console.log('Đã đóng reader');
-            break;
-          }
-          const chunk = new TextDecoder().decode(value);
-          serialBuffer += chunk;
-          let lines = serialBuffer.split('\n');
-          serialBuffer = lines.pop();
-          for (let line of lines) {
-            line = line.trim();
-            if (line) {
-              console.log('Nhận từ Serial:', line);
-              if (line === "RT") {
-                const { dateTime } = getVietnamTime();
-                const [date, time] = dateTime.split(', ');
-                const [month, day, year] = date.split('/');
-                const timeMessage = `SET_TIME:${day}${month}${year} ${time}`;
-                await writer.write(new TextEncoder().encode(timeMessage + '\n'));
-                console.log('Đã gửi thời gian đồng bộ:', timeMessage);
-              } else if (line.startsWith("TIME:")) {
-                const timeStr = line.substring(5);
-                lastReceivedTime = timeStr;
-                lastReceivedTimeMillis = millis();
-                updateCurrentTime(); // Cập nhật ngay lập tức
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Lỗi đọc Serial:', error);
-          isConnected = false;
-          alert('Mất kết nối Serial. Đang thử kết nối lại...');
-          disconnectFromSerial();
-          setTimeout(connectToSerial, 3000); // Thử kết nối lại sau 3 giây
-          break;
-        }
-      }
-    }
-  
-    // Gửi dữ liệu đến LED Matrix
-    async function sendToLedMatrix() {
-      if (!isConnected || !port || !writer) {
-        alert('Vui lòng kết nối Serial trước!');
-        return;
-      }
-  
-      const mode = document.querySelector('input[name="mode"]:checked').value;
-      let message;
-      if (mode === 'realtime') {
-        // Đồng bộ lại thời gian nếu ở chế độ Real-Time
-        const { dateTime } = getVietnamTime();
-        const [date, time] = dateTime.split(', ');
-        const [month, day, year] = date.split('/');
-        message = `SET_TIME:${day}${month}${year} ${time}`;
       } else {
-        message = `START_COUNTDOWN:${document.getElementById('countdownTimer').textContent}`;
-      }
-  
-      try {
-        console.log('Gửi đến Serial:', message);
-        await writer.write(new TextEncoder().encode(message + '\n'));
-        alert(`${mode === 'realtime' ? 'Thời gian thực' : 'Đếm ngược'} đã được gửi đến LED Matrix!`);
-      } catch (error) {
-        console.error('Lỗi gửi dữ liệu:', error);
-        alert('Không thể gửi dữ liệu: ' + error.message);
-        isConnected = false;
-        disconnectFromSerial();
-        setTimeout(connectToSerial, 3000);
-      }
-    }
-  
-    // Ngăn chặn xem mã nguồn
-    document.addEventListener('keydown', function(event) {
-      if (event.ctrlKey && event.keyCode === 85) {
-        event.preventDefault();
-        return false;
+        realtimeSection.style.display = 'none';
+        countdownSection.style.display = 'block';
+        startCountdown();
       }
     });
-  </script>
+  });
+
+  // Khởi động đếm ngược
+  function startCountdown() {
+    clearInterval(countdownInterval);
+    const endDateInput = document.getElementById('endDate').value;
+    const endTimeInput = document.getElementById('endTime').value;
+
+    if (!endDateInput || !endTimeInput) {
+      isCountingDown = false;
+      document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
+      return;
+    }
+
+    isCountingDown = true;
+    const endDateTime = new Date(`${endDateInput}T${endTimeInput}`).getTime();
+
+    countdownInterval = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = endDateTime - now;
+
+      if (distance < 0) {
+        clearInterval(countdownInterval);
+        isCountingDown = false;
+        document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
+        if (port && writer) {
+          writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
+        }
+        alert('Đếm ngược đã kết thúc!');
+        return;
+      }
+
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+      document.getElementById('countdownTimer').textContent = 
+        `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+    }, 1000);
+  }
+
+  document.getElementById('endDate').addEventListener('change', startCountdown);
+  document.getElementById('endTime').addEventListener('change', startCountdown);
+
+  // Kết nối Serial
+  async function connectToSerial() {
+    if (!navigator.serial) {
+      alert('Web Serial API không được hỗ trợ. Vui lòng sử dụng Chrome hoặc Edge.');
+      return;
+    }
+
+    try {
+      port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 9600 });
+      writer = port.writable.getWriter();
+      reader = port.readable.getReader();
+      isConnected = true;
+      document.getElementById('connectButton').disabled = true;
+      document.getElementById('disconnectButton').disabled = false;
+      alert('Kết nối Serial thành công!');
+      readSerialData();
+
+      // Đồng bộ thời gian Việt Nam khi kết nối
+      const { dateTime } = getVietnamTime();
+      const [date, time] = dateTime.split(', ');
+      const [month, day, year] = date.split('/');
+      const timeMessage = `SET_TIME:${day}${month}${year} ${time}`;
+      await writer.write(new TextEncoder().encode(timeMessage + '\n'));
+      console.log('Đã gửi thời gian đồng bộ:', timeMessage);
+    } catch (error) {
+      console.error('Lỗi kết nối Serial:', error);
+      alert('Không thể kết nối Serial: ' + error.message);
+      isConnected = false;
+      document.getElementById('connectButton').disabled = false;
+      document.getElementById('disconnectButton').disabled = true;
+    }
+  }
+
+  // Ngắt kết nối Serial
+  async function disconnectFromSerial() {
+    try {
+      if (writer) {
+        await writer.write(new TextEncoder().encode("STOP_COUNTDOWN\n"));
+        await writer.releaseLock();
+        writer = null;
+      }
+      if (reader) {
+        await reader.releaseLock();
+        reader = null;
+      }
+      if (port) {
+        await port.close();
+        port = null;
+      }
+      isConnected = false;
+      document.getElementById('connectButton').disabled = false;
+      document.getElementById('disconnectButton').disabled = true;
+      clearInterval(countdownInterval);
+      alert('Đã ngắt kết nối Serial!');
+    } catch (error) {
+      console.error('Lỗi ngắt kết nối Serial:', error);
+      alert('Không thể ngắt kết nối Serial: ' + error.message);
+    }
+  }
+
+  // Đọc dữ liệu Serial với cơ chế thử lại
+  async function readSerialData() {
+    while (isConnected) {
+      try {
+        const { value, done } = await reader.read();
+        if (done) {
+          console.log('Đã đóng reader');
+          break;
+        }
+        const chunk = new TextDecoder().decode(value);
+        serialBuffer += chunk;
+        let lines = serialBuffer.split('\n');
+        serialBuffer = lines.pop();
+        for (let line of lines) {
+          line = line.trim();
+          if (line) {
+            console.log('Nhận từ Serial:', line);
+            if (line === "RT") {
+              const { dateTime } = getVietnamTime();
+              const [date, time] = dateTime.split(', ');
+              const [month, day, year] = date.split('/');
+              const timeMessage = `SET_TIME:${day}${month}${year} ${time}`;
+              await writer.write(new TextEncoder().encode(timeMessage + '\n'));
+              console.log('Đã gửi thời gian đồng bộ:', timeMessage);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Lỗi đọc Serial:', error);
+        isConnected = false;
+        alert('Mất kết nối Serial. Đang thử kết nối lại...');
+        disconnectFromSerial();
+        setTimeout(connectToSerial, 3000); // Thử kết nối lại sau 3 giây
+        break;
+      }
+    }
+  }
+
+  // Gửi dữ liệu đến LED Matrix
+  async function sendToLedMatrix() {
+    if (!isConnected || !port || !writer) {
+      alert('Vui lòng kết nối Serial trước!');
+      return;
+    }
+
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    let message;
+    if (mode === 'realtime') {
+      // Đồng bộ lại thời gian nếu ở chế độ Real-Time
+      const { dateTime } = getVietnamTime();
+      const [date, time] = dateTime.split(', ');
+      const [month, day, year] = date.split('/');
+      message = `SET_TIME:${day}${month}${year} ${time}`;
+    } else {
+      message = `START_COUNTDOWN:${document.getElementById('countdownTimer').textContent}`;
+    }
+
+    try {
+      console.log('Gửi đến Serial:', message);
+      await writer.write(new TextEncoder().encode(message + '\n'));
+      alert(`${mode === 'realtime' ? 'Thời gian thực' : 'Đếm ngược'} đã được gửi đến LED Matrix!`);
+    } catch (error) {
+      console.error('Lỗi gửi dữ liệu:', error);
+      alert('Không thể gửi dữ liệu: ' + error.message);
+      isConnected = false;
+      disconnectFromSerial();
+      setTimeout(connectToSerial, 3000);
+    }
+  }
+
+  // Ngăn chặn xem mã nguồn
+  document.addEventListener('keydown', function(event) {
+    if (event.ctrlKey && event.keyCode === 85) {
+      event.preventDefault();
+      return false;
+    }
+  });
+</script>
 </body>
 </html>
