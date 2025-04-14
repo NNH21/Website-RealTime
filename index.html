@@ -396,8 +396,10 @@
     let isCountingDown = false;
     let countdownInterval = null;
     let isConnected = false;
+    let lastReceivedTime = "00:00"; // Thời gian nhận từ Arduino
+    let lastReceivedTimeMillis = 0; // Thời điểm nhận thời gian cuối
   
-    // Hàm lấy thời gian Việt Nam
+    // Hàm lấy thời gian Việt Nam (dự phòng nếu không nhận được từ Arduino)
     function getVietnamTime() {
       const now = new Date();
       return {
@@ -415,19 +417,29 @@
           timeZone: 'Asia/Ho_Chi_Minh',
           hour12: false,
           hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit'
+          minute: '2-digit'
         })
       };
     }
   
-    // Cập nhật thời gian thực trên giao diện
+    // Cập nhật thời gian trên giao diện
     function updateCurrentTime() {
-      const { timeOnly } = getVietnamTime();
-      document.getElementById('currentTime').textContent = timeOnly;
+      if (isConnected && (millis() - lastReceivedTimeMillis <= 2000)) {
+        // Sử dụng thời gian từ Arduino nếu có dữ liệu gần đây (trong 2 giây)
+        document.getElementById('currentTime').textContent = lastReceivedTime;
+      } else {
+        // Dự phòng: Dùng thời gian hệ thống nếu không nhận được dữ liệu
+        const { timeOnly } = getVietnamTime();
+        document.getElementById('currentTime').textContent = timeOnly;
+      }
     }
     setInterval(updateCurrentTime, 1000);
     updateCurrentTime();
+  
+    // Hàm tính thời gian hiện tại (dùng cho logic nội bộ)
+    function millis() {
+      return new Date().getTime();
+    }
   
     // Chuyển đổi chế độ
     const realtimeSection = document.getElementById('realtimeSection');
@@ -581,6 +593,11 @@
                 const timeMessage = `SET_TIME:${day}${month}${year} ${time}`;
                 await writer.write(new TextEncoder().encode(timeMessage + '\n'));
                 console.log('Đã gửi thời gian đồng bộ:', timeMessage);
+              } else if (line.startsWith("TIME:")) {
+                const timeStr = line.substring(5);
+                lastReceivedTime = timeStr;
+                lastReceivedTimeMillis = millis();
+                updateCurrentTime(); // Cập nhật ngay lập tức
               }
             }
           }
