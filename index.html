@@ -339,7 +339,7 @@
     // Chạy trên GitHub Pages (HTTPS), sử dụng ngrok để gửi thời gian từ website
     // đến ESP8266 (IP: 172.20.10.7, port 80) qua URL HTTPS công khai, không dùng Serial.
     // ESP8266 hiển thị thời gian thực (HH:MM) hoặc đếm ngược mượt mà trên LED Matrix.
-    // Liên kết với <DOCUMENT>: Hiển thị "Real-Time Clock" và thời gian đầy đủ trên website.
+    // Website hiển thị đầy đủ HH:MM:SS, LED chỉ hiển thị HH:MM.
 
     // Khởi tạo Particles.js
     particlesJS("particles-js", {
@@ -454,10 +454,11 @@
           isCountingDown = false;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
           if (espBaseUrl) {
-            fetch(`${espBaseUrl}/realtime`).catch(error => {
+            fetch(`${espBaseUrl}/realtime`).then(() => {
+              sendTimeToEsp(lastReceivedTime); // Gửi thời gian ngay sau khi chuyển chế độ
+            }).catch(error => {
               console.error('Lỗi gửi realtime:', error);
             });
-            updateCurrentTime(); // Gửi thời gian ngay lập tức
           }
         } else {
           realtimeSection.style.display = 'none';
@@ -491,10 +492,11 @@
           isCountingDown = false;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
           if (espBaseUrl) {
-            fetch(`${espBaseUrl}/realtime`).catch(error => {
+            fetch(`${espBaseUrl}/realtime`).then(() => {
+              sendTimeToEsp(lastReceivedTime); // Gửi thời gian ngay sau khi kết thúc đếm ngược
+            }).catch(error => {
               console.error('Lỗi gửi realtime:', error);
             });
-            updateCurrentTime(); // Gửi thời gian ngay lập tức
           }
           alert('Đếm ngược đã kết thúc!');
           return;
@@ -525,7 +527,7 @@
           document.getElementById('connectButton').disabled = true;
           document.getElementById('disconnectButton').disabled = false;
           alert('Đã kết nối đến ESP8266 qua ngrok!');
-          updateCurrentTime();
+          sendTimeToEsp(lastReceivedTime); // Gửi thời gian ngay sau khi kết nối
         } else {
           throw new Error('Không thể kết nối');
         }
