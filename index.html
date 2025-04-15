@@ -321,8 +321,8 @@
 
     <!-- Nút điều khiển -->
     <div class="button-group">
-      <button id="connectButton" onclick="connectToSerial()">Connect to Serial</button>
-      <button id="disconnectButton" onclick="disconnectFromSerial()" disabled>Disconnect Serial</button>
+      <button id="connectButton" onclick="connectToEsp()">Connect to ESP8266</button>
+      <button id="disconnectButton" onclick="disconnectFromEsp()" disabled>Disconnect ESP8266</button>
     </div>
     <button id="sendButton" onclick="sendToLedMatrix()">Send to LED Matrix</button>
   </div>
@@ -336,9 +336,9 @@
 
   <script>
     // Ghi chú: Giao diện HTML giữ nguyên toàn bộ chức năng gốc, bao gồm Firebase.
-    // Sử dụng Web Serial API để giao tiếp với Arduino Uno qua USB Serial.
-    // Tối ưu hóa đọc Serial để hiển thị thời gian mượt mà, tránh khựng.
-    // Yêu cầu: Mở trong Chrome/Edge, kết nối Uno qua USB, chọn cổng Serial khi được hỏi.
+    // Sử dụng ESP8266 thay vì Arduino Uno, giao tiếp qua Wi-Fi/HTTP để gửi thời gian
+    // từ website đến ESP8266, không dùng Serial. ESP8266 hiển thị thời gian thực
+    // hoặc đếm ngược mượt mà trên LED Matrix.
 
     // Khởi tạo Particles.js
     particlesJS("particles-js", {
@@ -393,16 +393,12 @@
     }
 
     // Biến toàn cục
-    let serialPort = null; // Đối tượng SerialPort
-    let writer = null; // Writer để gửi dữ liệu
-    let reader = null; // Reader để đọc dữ liệu
+    let espIpAddress = null;
     let isCountingDown = false;
     let countdownInterval = null;
-    let lastReceivedTime = "00:00:00"; // Thời gian thực
-    let lastReceivedCountdown = "00d 00h 00m 00s"; // Đếm ngược
-    let isReading = false; // Trạng thái đọc Serial
+    let lastReceivedTime = "00:00:00";
 
-    // Hàm lấy thời gian Việt Nam (dự phòng)
+    // Hàm lấy thời gian Việt Nam
     function getVietnamTime() {
       const now = new Date();
       return {
@@ -428,54 +424,19 @@
 
     // Cập nhật thời gian trên giao diện
     function updateCurrentTime() {
+      const { timeOnly } = getVietnamTime();
+      lastReceivedTime = timeOnly;
       document.getElementById('currentTime').textContent = lastReceivedTime;
-    }
-
-    // Cập nhật đếm ngược trên giao diện
-    function updateCountdown() {
-      document.getElementById('countdownTimer').textContent = lastReceivedCountdown;
-    }
-
-    // Đọc dữ liệu từ Serial liên tục
-    async function readFromArduino() {
-      if (isReading || !serialPort || !serialPort.readable) return;
-      isReading = true;
-      reader = serialPort.readable.getReader();
-      let buffer = '';
-
-      try {
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) {
-            console.log('Luồng đọc bị đóng');
-            break;
-          }
-          buffer += new TextDecoder().decode(value);
-          // Xử lý từng dòng
-          const lines = buffer.split('\n');
-          buffer = lines.pop(); // Giữ lại phần chưa hoàn chỉnh
-          for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (trimmedLine.startsWith('T:')) {
-              lastReceivedTime = trimmedLine.slice(2);
-              updateCurrentTime();
-            } else if (trimmedLine.startsWith('C:')) {
-              lastReceivedCountdown = trimmedLine.slice(2);
-              updateCountdown();
-            } else if (trimmedLine.startsWith('OK:') || trimmedLine.startsWith('ERR:')) {
-              console.log('Phản hồi:', trimmedLine);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Lỗi đọc Serial:', error);
-        isReading = false;
-        if (reader) {
-          reader.releaseLock();
-          reader = null;
-        }
+      if (espIpAddress && !isCountingDown) {
+        sendTimeToEsp(lastReceivedTime);
       }
     }
+
+    // Gửi thời gian thực định kỳ
+    setInterval(() => {
+      if (!isCountingDown) updateCurrentTime();
+    }, 1000);
+    updateCurrentTime();
 
     // Chuyển đổi chế độ
     const realtimeSection = document.getElementById('realtimeSection');
@@ -490,7 +451,11 @@
           clearInterval(countdownInterval);
           isCountingDown = false;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
-          sendToArduino('R');
+          if (espIpAddress) {
+            fetch(`http://${espIpAddress}/realtime`).catch(error => {
+              console.error('Lỗi gửi realtime:', error);
+            });
+          }
         } else {
           realtimeSection.style.display = 'none';
           countdownSection.style.display = 'block';
@@ -522,7 +487,11 @@
           clearInterval(countdownInterval);
           isCountingDown = false;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
-          sendToArduino('R');
+          if (espIpAddress) {
+            fetch(`http://${espIpAddress}/realtime`).catch(error => {
+              console.error('Lỗi gửi realtime:', error);
+            });
+          }
           alert('Đếm ngược đã kết thúc!');
           return;
         }
@@ -532,98 +501,92 @@
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        lastReceivedCountdown = 
-          `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
-        updateCountdown();
+        const countdownStr = `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+        document.getElementById('countdownTimer').textContent = countdownStr;
+        if (espIpAddress) {
+          sendCountdownToEsp(days, hours, minutes, seconds);
+        }
       }, 1000);
     }
 
     document.getElementById('endDate').addEventListener('change', startCountdown);
     document.getElementById('endTime').addEventListener('change', startCountdown);
 
-    // Kết nối đến Arduino qua Web Serial API
-    async function connectToSerial() {
-      if (!navigator.serial) {
-        alert('Trình duyệt không hỗ trợ Web Serial API. Vui lòng dùng Chrome hoặc Edge.');
-        return;
-      }
-
-      try {
-        serialPort = await navigator.serial.requestPort();
-        await serialPort.open({ baudRate: 9600 });
-        writer = serialPort.writable.getWriter();
-        document.getElementById('connectButton').disabled = true;
-        document.getElementById('disconnectButton').disabled = false;
-        alert('Đã kết nối đến Arduino Uno qua Serial!');
-        readFromArduino(); // Bắt đầu đọc dữ liệu
-      } catch (error) {
-        console.error('Lỗi kết nối Serial:', error);
-        alert('Không thể kết nối đến Arduino. Vui lòng kiểm tra cáp USB và thử lại.');
-        serialPort = null;
-        writer = null;
-      }
-    }
-
-    // Ngắt kết nối Serial
-    async function disconnectFromSerial() {
-      try {
-        if (reader) {
-          reader.cancel();
-          reader.releaseLock();
-          reader = null;
+    // Kết nối đến ESP8266
+    async function connectToEsp() {
+      const ipInput = prompt("Nhập địa chỉ IP của ESP8266 (ví dụ: 192.168.1.100):");
+      if (ipInput) {
+        espIpAddress = ipInput;
+        try {
+          const response = await fetch(`http://${espIpAddress}/realtime`);
+          if (response.ok) {
+            document.getElementById('connectButton').disabled = true;
+            document.getElementById('disconnectButton').disabled = false;
+            alert('Đã kết nối đến ESP8266!');
+            updateCurrentTime();
+          } else {
+            throw new Error('Không thể kết nối');
+          }
+        } catch (error) {
+          console.error('Lỗi kết nối đến ESP8266:', error);
+          alert('Không thể kết nối đến ESP8266. Vui lòng kiểm tra IP và thử lại.');
+          espIpAddress = null;
         }
-        if (writer) {
-          await writer.close();
-          writer = null;
-        }
-        if (serialPort) {
-          await serialPort.close();
-          serialPort = null;
-        }
-        isReading = false;
-        document.getElementById('connectButton').disabled = false;
-        document.getElementById('disconnectButton').disabled = true;
-        clearInterval(countdownInterval);
-        alert('Đã ngắt kết nối Serial!');
-      } catch (error) {
-        console.error('Lỗi ngắt kết nối:', error);
-        alert('Lỗi ngắt kết nối Serial!');
       }
     }
 
-    // Gửi dữ liệu đến Arduino
+    // Ngắt kết nối ESP8266
+    function disconnectFromEsp() {
+      espIpAddress = null;
+      document.getElementById('connectButton').disabled = false;
+      document.getElementById('disconnectButton').disabled = true;
+      clearInterval(countdownInterval);
+      alert('Đã ngắt kết nối ESP8266!');
+    }
+
+    // Gửi thời gian thực đến ESP8266
+    async function sendTimeToEsp(timeStr) {
+      if (!espIpAddress) return;
+      try {
+        const response = await fetch(`http://${espIpAddress}/time?time=${timeStr}`);
+        if (!response.ok) throw new Error('Lỗi gửi thời gian');
+      } catch (error) {
+        console.error('Lỗi gửi thời gian:', error);
+      }
+    }
+
+    // Gửi đếm ngược đến ESP8266
+    async function sendCountdownToEsp(days, hours, minutes, seconds) {
+      if (!espIpAddress) return;
+      try {
+        const response = await fetch(`http://${espIpAddress}/countdown?days=${days}&hours=${hours}&minutes=${minutes}&seconds=${seconds}`);
+        if (!response.ok) throw new Error('Lỗi gửi đếm ngược');
+      } catch (error) {
+        console.error('Lỗi gửi đếm ngược:', error);
+      }
+    }
+
+    // Gửi dữ liệu đến LED Matrix
     async function sendToLedMatrix() {
-      if (!serialPort || !writer) {
-        alert('Vui lòng kết nối đến Arduino trước!');
+      if (!espIpAddress) {
+        alert('Vui lòng kết nối đến ESP8266 trước!');
         return;
       }
 
       const mode = document.querySelector('input[name="mode"]:checked').value;
       try {
         if (mode === 'realtime') {
-          await sendToArduino('R');
+          await fetch(`http://${espIpAddress}/realtime`);
           alert('Đã chuyển về chế độ thời gian thực!');
         } else {
           const countdownStr = document.getElementById('countdownTimer').textContent;
           const [days, hours, minutes, seconds] = countdownStr.match(/\d+/g);
-          const command = `C ${days} ${hours} ${minutes} ${seconds}`;
-          await sendToArduino(command);
+          await sendCountdownToEsp(days, hours, minutes, seconds);
           alert('Đếm ngược đã được gửi đến LED Matrix!');
         }
       } catch (error) {
         console.error('Lỗi gửi dữ liệu:', error);
-        alert('Không thể gửi dữ liệu đến Arduino!');
-      }
-    }
-
-    // Hàm gửi lệnh đến Arduino
-    async function sendToArduino(command) {
-      if (writer) {
-        const data = new TextEncoder().encode(command + '\n');
-        await writer.write(data);
-        console.log('Gửi đến Arduino:', command);
-      } else {
-        throw new Error('Chưa kết nối Serial');
+        alert('Không thể gửi dữ liệu đến ESP8266!');
       }
     }
 
