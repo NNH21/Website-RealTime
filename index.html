@@ -336,9 +336,9 @@
 
   <script>
     // Ghi chú: Giao diện HTML giữ nguyên toàn bộ chức năng gốc, bao gồm Firebase.
-    // Để giao tiếp với Arduino Uno (không có Wi-Fi), mã này sử dụng Web Serial API,
-    // cho phép trình duyệt (Chrome/Edge) gửi lệnh trực tiếp đến Uno qua USB Serial.
-    // Yêu cầu: Mở file HTML trong Chrome/Edge, kết nối Uno qua USB, chọn cổng Serial khi được hỏi.
+    // Sử dụng Web Serial API để giao tiếp với Arduino Uno qua USB Serial.
+    // Tối ưu hóa đọc Serial để hiển thị thời gian mượt mà, tránh khựng.
+    // Yêu cầu: Mở trong Chrome/Edge, kết nối Uno qua USB, chọn cổng Serial khi được hỏi.
 
     // Khởi tạo Particles.js
     particlesJS("particles-js", {
@@ -393,11 +393,14 @@
     }
 
     // Biến toàn cục
-    let serialPort = null; // Đối tượng SerialPort từ Web Serial API
+    let serialPort = null; // Đối tượng SerialPort
     let writer = null; // Writer để gửi dữ liệu
+    let reader = null; // Reader để đọc dữ liệu
     let isCountingDown = false;
     let countdownInterval = null;
-    let lastReceivedTime = "00:00:00"; // Thời gian hiển thị
+    let lastReceivedTime = "00:00:00"; // Thời gian thực
+    let lastReceivedCountdown = "00d 00h 00m 00s"; // Đếm ngược
+    let isReading = false; // Trạng thái đọc Serial
 
     // Hàm lấy thời gian Việt Nam (dự phòng)
     function getVietnamTime() {
@@ -428,21 +431,51 @@
       document.getElementById('currentTime').textContent = lastReceivedTime;
     }
 
-    // Lấy thời gian từ Arduino (hoặc dự phòng từ máy tính)
-    async function fetchTimeFromArduino() {
-      // Web Serial API không hỗ trợ đọc liên tục dễ dàng, dùng thời gian máy tính làm dự phòng
+    // Cập nhật đếm ngược trên giao diện
+    function updateCountdown() {
+      document.getElementById('countdownTimer').textContent = lastReceivedCountdown;
+    }
+
+    // Đọc dữ liệu từ Serial liên tục
+    async function readFromArduino() {
+      if (isReading || !serialPort || !serialPort.readable) return;
+      isReading = true;
+      reader = serialPort.readable.getReader();
+      let buffer = '';
+
       try {
-        const { timeOnly } = getVietnamTime();
-        lastReceivedTime = timeOnly;
-        updateCurrentTime();
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            console.log('Luồng đọc bị đóng');
+            break;
+          }
+          buffer += new TextDecoder().decode(value);
+          // Xử lý từng dòng
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // Giữ lại phần chưa hoàn chỉnh
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('T:')) {
+              lastReceivedTime = trimmedLine.slice(2);
+              updateCurrentTime();
+            } else if (trimmedLine.startsWith('C:')) {
+              lastReceivedCountdown = trimmedLine.slice(2);
+              updateCountdown();
+            } else if (trimmedLine.startsWith('OK:') || trimmedLine.startsWith('ERR:')) {
+              console.log('Phản hồi:', trimmedLine);
+            }
+          }
+        }
       } catch (error) {
-        console.error('Lỗi lấy thời gian:', error);
-        lastReceivedTime = "00:00:00";
-        updateCurrentTime();
+        console.error('Lỗi đọc Serial:', error);
+        isReading = false;
+        if (reader) {
+          reader.releaseLock();
+          reader = null;
+        }
       }
     }
-    setInterval(fetchTimeFromArduino, 1000); // Cập nhật mỗi giây
-    fetchTimeFromArduino();
 
     // Chuyển đổi chế độ
     const realtimeSection = document.getElementById('realtimeSection');
@@ -457,7 +490,7 @@
           clearInterval(countdownInterval);
           isCountingDown = false;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
-          sendToArduino('R'); // Gửi lệnh thời gian thực
+          sendToArduino('R');
         } else {
           realtimeSection.style.display = 'none';
           countdownSection.style.display = 'block';
@@ -489,7 +522,7 @@
           clearInterval(countdownInterval);
           isCountingDown = false;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
-          sendToArduino('R'); // Quay lại thời gian thực
+          sendToArduino('R');
           alert('Đếm ngược đã kết thúc!');
           return;
         }
@@ -499,8 +532,9 @@
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        document.getElementById('countdownTimer').textContent = 
+        lastReceivedCountdown = 
           `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+        updateCountdown();
       }, 1000);
     }
 
@@ -521,7 +555,7 @@
         document.getElementById('connectButton').disabled = true;
         document.getElementById('disconnectButton').disabled = false;
         alert('Đã kết nối đến Arduino Uno qua Serial!');
-        fetchTimeFromArduino();
+        readFromArduino(); // Bắt đầu đọc dữ liệu
       } catch (error) {
         console.error('Lỗi kết nối Serial:', error);
         alert('Không thể kết nối đến Arduino. Vui lòng kiểm tra cáp USB và thử lại.');
@@ -533,6 +567,11 @@
     // Ngắt kết nối Serial
     async function disconnectFromSerial() {
       try {
+        if (reader) {
+          reader.cancel();
+          reader.releaseLock();
+          reader = null;
+        }
         if (writer) {
           await writer.close();
           writer = null;
@@ -541,6 +580,7 @@
           await serialPort.close();
           serialPort = null;
         }
+        isReading = false;
         document.getElementById('connectButton').disabled = false;
         document.getElementById('disconnectButton').disabled = true;
         clearInterval(countdownInterval);
@@ -576,7 +616,7 @@
       }
     }
 
-    // Hàm gửi lệnh đến Arduino qua Web Serial API
+    // Hàm gửi lệnh đến Arduino
     async function sendToArduino(command) {
       if (writer) {
         const data = new TextEncoder().encode(command + '\n');
