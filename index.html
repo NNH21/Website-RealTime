@@ -336,9 +336,10 @@
 
   <script>
     // Ghi chú: Giao diện HTML giữ nguyên toàn bộ chức năng gốc, bao gồm Firebase.
-    // Sử dụng ESP8266 thay vì Arduino Uno, giao tiếp qua Wi-Fi/HTTP để gửi thời gian
-    // từ website đến ESP8266, không dùng Serial. ESP8266 hiển thị thời gian thực
-    // hoặc đếm ngược mượt mà trên LED Matrix.
+    // Chạy trên GitHub Pages (HTTPS), sử dụng ngrok để gửi thời gian từ website
+    // đến ESP8266 (IP: 172.20.10.7, port 80) qua URL HTTPS công khai, không dùng Serial.
+    // ESP8266 hiển thị thời gian thực hoặc đếm ngược mượt mà trên LED Matrix.
+    // Liên kết với <DOCUMENT>: Hiển thị "Real-Time Clock" và "00:00:00" như mô tả.
 
     // Khởi tạo Particles.js
     particlesJS("particles-js", {
@@ -393,7 +394,8 @@
     }
 
     // Biến toàn cục
-    let espIpAddress = null;
+    const ngrokUrl = "https://bb9c-2402-9d80-44c-bff4-a800-d3a0-d35d-9b88.ngrok-free.app/"; // Thay bằng URL ngrok của bạn
+    let espBaseUrl = null;
     let isCountingDown = false;
     let countdownInterval = null;
     let lastReceivedTime = "00:00:00";
@@ -427,7 +429,7 @@
       const { timeOnly } = getVietnamTime();
       lastReceivedTime = timeOnly;
       document.getElementById('currentTime').textContent = lastReceivedTime;
-      if (espIpAddress && !isCountingDown) {
+      if (espBaseUrl && !isCountingDown) {
         sendTimeToEsp(lastReceivedTime);
       }
     }
@@ -451,8 +453,8 @@
           clearInterval(countdownInterval);
           isCountingDown = false;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
-          if (espIpAddress) {
-            fetch(`http://${espIpAddress}/realtime`).catch(error => {
+          if (espBaseUrl) {
+            fetch(`${espBaseUrl}/realtime`).catch(error => {
               console.error('Lỗi gửi realtime:', error);
             });
           }
@@ -487,8 +489,8 @@
           clearInterval(countdownInterval);
           isCountingDown = false;
           document.getElementById('countdownTimer').textContent = '00d 00h 00m 00s';
-          if (espIpAddress) {
-            fetch(`http://${espIpAddress}/realtime`).catch(error => {
+          if (espBaseUrl) {
+            fetch(`${espBaseUrl}/realtime`).catch(error => {
               console.error('Lỗi gửi realtime:', error);
             });
           }
@@ -503,7 +505,7 @@
 
         const countdownStr = `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
         document.getElementById('countdownTimer').textContent = countdownStr;
-        if (espIpAddress) {
+        if (espBaseUrl) {
           sendCountdownToEsp(days, hours, minutes, seconds);
         }
       }, 1000);
@@ -512,32 +514,29 @@
     document.getElementById('endDate').addEventListener('change', startCountdown);
     document.getElementById('endTime').addEventListener('change', startCountdown);
 
-    // Kết nối đến ESP8266
+    // Kết nối đến ESP8266 qua ngrok
     async function connectToEsp() {
-      const ipInput = prompt("Nhập địa chỉ IP của ESP8266 (ví dụ: 192.168.1.100):");
-      if (ipInput) {
-        espIpAddress = ipInput;
-        try {
-          const response = await fetch(`http://${espIpAddress}/realtime`);
-          if (response.ok) {
-            document.getElementById('connectButton').disabled = true;
-            document.getElementById('disconnectButton').disabled = false;
-            alert('Đã kết nối đến ESP8266!');
-            updateCurrentTime();
-          } else {
-            throw new Error('Không thể kết nối');
-          }
-        } catch (error) {
-          console.error('Lỗi kết nối đến ESP8266:', error);
-          alert('Không thể kết nối đến ESP8266. Vui lòng kiểm tra IP và thử lại.');
-          espIpAddress = null;
+      try {
+        const response = await fetch(`${ngrokUrl}/realtime`);
+        if (response.ok) {
+          espBaseUrl = ngrokUrl;
+          document.getElementById('connectButton').disabled = true;
+          document.getElementById('disconnectButton').disabled = false;
+          alert('Đã kết nối đến ESP8266 qua ngrok!');
+          updateCurrentTime();
+        } else {
+          throw new Error('Không thể kết nối');
         }
+      } catch (error) {
+        console.error('Lỗi kết nối đến ESP8266:', error);
+        alert('Không thể kết nối đến ESP8266. Vui lòng kiểm tra ngrok và thử lại.');
+        espBaseUrl = null;
       }
     }
 
     // Ngắt kết nối ESP8266
     function disconnectFromEsp() {
-      espIpAddress = null;
+      espBaseUrl = null;
       document.getElementById('connectButton').disabled = false;
       document.getElementById('disconnectButton').disabled = true;
       clearInterval(countdownInterval);
@@ -546,9 +545,9 @@
 
     // Gửi thời gian thực đến ESP8266
     async function sendTimeToEsp(timeStr) {
-      if (!espIpAddress) return;
+      if (!espBaseUrl) return;
       try {
-        const response = await fetch(`http://${espIpAddress}/time?time=${timeStr}`);
+        const response = await fetch(`${espBaseUrl}/time?time=${timeStr}`);
         if (!response.ok) throw new Error('Lỗi gửi thời gian');
       } catch (error) {
         console.error('Lỗi gửi thời gian:', error);
@@ -557,9 +556,9 @@
 
     // Gửi đếm ngược đến ESP8266
     async function sendCountdownToEsp(days, hours, minutes, seconds) {
-      if (!espIpAddress) return;
+      if (!espBaseUrl) return;
       try {
-        const response = await fetch(`http://${espIpAddress}/countdown?days=${days}&hours=${hours}&minutes=${minutes}&seconds=${seconds}`);
+        const response = await fetch(`${espBaseUrl}/countdown?days=${days}&hours=${hours}&minutes=${minutes}&seconds=${seconds}`);
         if (!response.ok) throw new Error('Lỗi gửi đếm ngược');
       } catch (error) {
         console.error('Lỗi gửi đếm ngược:', error);
@@ -568,7 +567,7 @@
 
     // Gửi dữ liệu đến LED Matrix
     async function sendToLedMatrix() {
-      if (!espIpAddress) {
+      if (!espBaseUrl) {
         alert('Vui lòng kết nối đến ESP8266 trước!');
         return;
       }
@@ -576,7 +575,7 @@
       const mode = document.querySelector('input[name="mode"]:checked').value;
       try {
         if (mode === 'realtime') {
-          await fetch(`http://${espIpAddress}/realtime`);
+          await fetch(`${espBaseUrl}/realtime`);
           alert('Đã chuyển về chế độ thời gian thực!');
         } else {
           const countdownStr = document.getElementById('countdownTimer').textContent;
