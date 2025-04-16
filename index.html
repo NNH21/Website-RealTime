@@ -5,18 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESP8266 RTC LED Matrix Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <style>
         body {
             background-color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
         }
         .container {
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
         }
+        .tab {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .tab.active {
+            background-color: #3b82f6;
+            color: white;
+            transform: scale(1.05);
+        }
         .time-display, .countdown-display {
             font-family: monospace;
-            font-size: 2rem;
+            font-size: 2.5rem;
             color: #1f2937;
         }
         .blinking {
@@ -25,33 +36,86 @@
         @keyframes blink {
             50% { opacity: 0; }
         }
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <div class="container mx-auto p-4">
-        <h1 class="text-3xl font-bold text-center mb-6">ESP8266 RTC LED Matrix Control</h1>
+        <h1 class="text-4xl font-bold text-center mb-8 animate__animated animate__fadeIn">ESP8266 RTC LED Matrix Control</h1>
+
+        <!-- Tabs -->
+        <div class="flex justify-center mb-6">
+            <div class="tab bg-gray-200 px-6 py-3 rounded-l-lg text-lg font-semibold" onclick="showTab('realtime')" id="realtimeTab">Real-Time Clock</div>
+            <div class="tab bg-gray-200 px-6 py-3 rounded-r-lg text-lg font-semibold" onclick="showTab('countdown')" id="countdownTab">Countdown Timer</div>
+        </div>
 
         <!-- Real-Time Clock Section -->
-        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+        <div id="realtimeSection" class="bg-white p-8 rounded-lg shadow-lg mb-6 animate__animated animate__fadeIn hidden">
             <h2 class="text-2xl font-semibold mb-4">Real-Time Clock</h2>
             <div class="time-display" id="realTimeDisplay">00:00:00</div>
-            <button onclick="sendRealTime()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Send to LED Matrix</button>
+            <div class="flex items-center mt-6">
+                <button onclick="sendRealTime()" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition transform hover:scale-105">Send to LED Matrix</button>
+                <div id="realtimeSpinner" class="spinner ml-4"></div>
+            </div>
         </div>
 
         <!-- Countdown Timer Section -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
+        <div id="countdownSection" class="bg-white p-8 rounded-lg shadow-lg mb-6 animate__animated animate__fadeIn hidden">
             <h2 class="text-2xl font-semibold mb-4">Countdown Timer</h2>
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700">Target Date and Time</label>
-                <input type="datetime-local" id="targetDateTime" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Target Date and Time</label>
+                <input type="datetime-local" id="targetDateTime" class="block w-full border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
             <div class="countdown-display" id="countdownDisplay">00d 00h 00m 00s</div>
-            <button onclick="sendCountdown()" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Send to LED Matrix</button>
+            <div class="flex items-center mt-6">
+                <button onclick="sendCountdown()" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition transform hover:scale-105">Send to LED Matrix</button>
+                <div id="countdownSpinner" class="spinner ml-4"></div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Update real-time clock every second
+        // ESP8266 IP (update if using Wi-Fi instead of AP)
+        const ESP_IP = 'http://192.168.4.1';
+
+        // Tab switching
+        function showTab(tab) {
+            const realtimeSection = document.getElementById('realtimeSection');
+            const countdownSection = document.getElementById('countdownSection');
+            const realtimeTab = document.getElementById('realtimeTab');
+            const countdownTab = document.getElementById('countdownTab');
+
+            if (tab === 'realtime') {
+                realtimeSection.classList.remove('hidden');
+                countdownSection.classList.add('hidden');
+                realtimeTab.classList.add('active');
+                countdownTab.classList.remove('active');
+                updateRealTime(); // Start real-time updates
+                clearInterval(countdownInterval);
+            } else {
+                countdownSection.classList.remove('hidden');
+                realtimeSection.classList.add('hidden');
+                countdownTab.classList.add('active');
+                realtimeTab.classList.remove('active');
+                updateCountdown(); // Start countdown updates
+                clearInterval(realTimeInterval);
+            }
+        }
+
+        // Real-Time Clock
+        let realTimeInterval = null;
         function updateRealTime() {
             const now = new Date();
             const hours = String(now.getHours()).padStart(2, '0');
@@ -60,11 +124,24 @@
             const colon = seconds % 2 === 0 ? ':' : ' ';
             document.getElementById('realTimeDisplay').innerHTML = `${hours}${colon}${minutes}:${seconds}`;
         }
-        setInterval(updateRealTime, 1000);
-        updateRealTime();
 
-        // Send real-time data to ESP8266
+        // Sync RTC time on page load
+        async function syncTime() {
+            try {
+                const response = await fetch(`${ESP_IP}/getTime`);
+                const data = await response.json();
+                const rtcTime = new Date(data.time);
+                document.getElementById('realTimeDisplay').innerHTML = 
+                    `${String(rtcTime.getHours()).padStart(2, '0')}:${String(rtcTime.getMinutes()).padStart(2, '0')}:${String(rtcTime.getSeconds()).padStart(2, '0')}`;
+            } catch (error) {
+                console.error('Error syncing time:', error);
+            }
+        }
+
+        // Send real-time data
         async function sendRealTime() {
+            const spinner = document.getElementById('realtimeSpinner');
+            spinner.style.display = 'block';
             const now = new Date();
             const data = {
                 mode: 'realtime',
@@ -73,23 +150,32 @@
                 seconds: now.getSeconds()
             };
             try {
-                const response = await fetch('http://192.168.4.1/update', {
+                const response = await fetch(`${ESP_IP}/update`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                if (response.ok) alert('Real-time data sent successfully!');
-                else alert('Failed to send data.');
+                if (response.ok) {
+                    alert('Real-time data sent successfully!');
+                    syncTime(); // Sync after sending
+                } else {
+                    alert('Failed to send data.');
+                }
             } catch (error) {
                 alert('Error: ' + error.message);
+            } finally {
+                spinner.style.display = 'none';
             }
         }
 
-        // Update countdown display
+        // Countdown Timer
         let countdownInterval = null;
         function updateCountdown() {
             const targetInput = document.getElementById('targetDateTime').value;
-            if (!targetInput) return;
+            if (!targetInput) {
+                document.getElementById('countdownDisplay').innerHTML = 'Select a target time';
+                return;
+            }
 
             const target = new Date(targetInput).getTime();
             const now = new Date().getTime();
@@ -110,21 +196,29 @@
                 `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
         }
 
-        // Start countdown when target date is set
+        // Start countdown on input change
         document.getElementById('targetDateTime').addEventListener('change', () => {
             clearInterval(countdownInterval);
             countdownInterval = setInterval(updateCountdown, 1000);
             updateCountdown();
         });
 
-        // Send countdown data to ESP8266
+        // Send countdown data
         async function sendCountdown() {
+            const spinner = document.getElementById('countdownSpinner');
+            spinner.style.display = 'block';
             const targetInput = document.getElementById('targetDateTime').value;
             if (!targetInput) {
                 alert('Please select a target date and time.');
+                spinner.style.display = 'none';
                 return;
             }
             const target = new Date(targetInput);
+            if (target <= new Date()) {
+                alert('Please select a future date and time.');
+                spinner.style.display = 'none';
+                return;
+            }
             const data = {
                 mode: 'countdown',
                 year: target.getFullYear(),
@@ -134,17 +228,27 @@
                 minutes: target.getMinutes()
             };
             try {
-                const response = await fetch('http://192.168.4.1/update', {
+                const response = await fetch(`${ESP_IP}/update`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                if (response.ok) alert('Countdown data sent successfully!');
-                else alert('Failed to send data.');
+                if (response.ok) {
+                    alert('Countdown data sent successfully!');
+                } else {
+                    alert('Failed to send data.');
+                }
             } catch (error) {
                 alert('Error: ' + error.message);
+            } finally {
+                spinner.style.display = 'none';
             }
         }
+
+        // Initialize
+        showTab('realtime');
+        realTimeInterval = setInterval(updateRealTime, 1000);
+        syncTime();
     </script>
 </body>
 </html>
