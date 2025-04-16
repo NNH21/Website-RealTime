@@ -259,7 +259,11 @@
         });
 
         // ESP8266 IP (thay bằng URL HTTPS từ Ngrok)
-        const ESP_IP = 'https://3fe0-2402-800-629c-bb3b-98e1-15d4-e366-a652.ngrok-free.app/'; // Thay bằng URL của bạn
+        const ESP_IP = 'https://96b4-2402-800-629c-bb3b-98e1-15d4-e366-a652.ngrok-free.app/'; // Thay bằng URL của bạn
+
+        // Thông tin xác thực Basic Auth (nếu có)
+        const NGROK_USERNAME = 'user'; // Thay bằng username của bạn
+        const NGROK_PASSWORD = 'pass123'; // Thay bằng password của bạn
 
         let isConnected = false;
 
@@ -294,8 +298,14 @@
             const sendCountdownBtn = document.getElementById('sendCountdownBtn');
 
             try {
-                const response = await fetch(`${ESP_IP}/getTime`, { method: 'GET' });
+                const response = await fetch(`${ESP_IP}/getTime`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(`${NGROK_USERNAME}:${NGROK_PASSWORD}`)
+                    }
+                });
                 if (response.ok) {
+                    const data = await response.json();
                     isConnected = true;
                     statusText.textContent = 'Connected';
                     statusText.classList.remove('status-disconnected');
@@ -314,6 +324,7 @@
                 sendRealTimeBtn.disabled = true;
                 sendCountdownBtn.disabled = true;
                 document.getElementById('realtimeError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel.';
+                console.error('Error connecting:', error);
             }
         }
 
@@ -345,7 +356,12 @@
 
         async function syncTime() {
             try {
-                const response = await fetch(`${ESP_IP}/getTime`);
+                const response = await fetch(`${ESP_IP}/getTime`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(`${NGROK_USERNAME}:${NGROK_PASSWORD}`)
+                    }
+                });
                 const data = await response.json();
                 const rtcTime = new Date(data.time);
                 document.getElementById('realTimeDisplay').innerHTML = 
@@ -377,7 +393,10 @@
             try {
                 const response = await fetch(`${ESP_IP}/update`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Basic ' + btoa(`${NGROK_USERNAME}:${NGROK_PASSWORD}`)
+                    },
                     body: JSON.stringify(data)
                 });
                 if (response.ok) {
@@ -460,7 +479,10 @@
             try {
                 const response = await fetch(`${ESP_IP}/update`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Basic ' + btoa(`${NGROK_USERNAME}:${NGROK_PASSWORD}`)
+                    },
                     body: JSON.stringify(data)
                 });
                 if (response.ok) {
