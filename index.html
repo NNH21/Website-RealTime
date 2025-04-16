@@ -310,7 +310,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     if (!data.time) {
-                        throw new Error('Invalid response format');
+                        throw new Error('Invalid response format: Missing "time" field');
                     }
                     isConnected = true;
                     statusText.textContent = 'Connected';
@@ -331,8 +331,8 @@
                 statusText.classList.add('status-disconnected');
                 sendRealTimeBtn.disabled = true;
                 sendCountdownBtn.disabled = true;
-                document.getElementById('realtimeError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel.';
-                document.getElementById('countdownError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel.';
+                document.getElementById('realtimeError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel hoặc trạng thái ESP8266.';
+                document.getElementById('countdownError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel hoặc trạng thái ESP8266.';
                 console.error('Error connecting:', error);
             }
         }
