@@ -115,6 +115,12 @@
             margin-top: 10px;
             text-align: center;
         }
+        .success-message {
+            color: #22c55e;
+            font-size: 0.875rem;
+            margin-top: 10px;
+            text-align: center;
+        }
         .connect-btn, .disconnect-btn, .send-btn {
             transition: all 0.3s ease;
             border-radius: 50px;
@@ -182,6 +188,7 @@
                 <button onclick="sendRealTime()" class="send-btn" id="sendRealTimeBtn" disabled>Send to LED Matrix</button>
                 <div id="realtimeSpinner" class="spinner ml-4"></div>
             </div>
+            <div id="realtimeMessage" class="success-message"></div>
             <div id="realtimeError" class="error-message"></div>
         </div>
 
@@ -197,6 +204,7 @@
                 <button onclick="sendCountdown()" class="send-btn" id="sendCountdownBtn" disabled>Send to LED Matrix</button>
                 <div id="countdownSpinner" class="spinner ml-4"></div>
             </div>
+            <div id="countdownMessage" class="success-message"></div>
             <div id="countdownError" class="error-message"></div>
         </div>
     </div>
@@ -259,11 +267,7 @@
         });
 
         // ESP8266 IP (thay bằng URL HTTPS từ Ngrok)
-        const ESP_IP = 'https://996e-2402-800-629c-bb3b-98e1-15d4-e366-a652.ngrok-free.app/'; // Thay bằng URL mới từ Ngrok
-
-        // Thông tin xác thực Basic Auth
-        const NGROK_USERNAME = 'user';
-        const NGROK_PASSWORD = 'password123'; // Cập nhật mật khẩu mới
+        const ESP_IP = 'https://6f1c-2402-800-629c-bb3b-98e1-15d4-e366-a652.ngrok-free.app/'; // Thay bằng URL mới từ Ngrok
 
         let isConnected = false;
 
@@ -296,13 +300,12 @@
             const statusText = document.getElementById('connectionStatus');
             const sendRealTimeBtn = document.getElementById('sendRealTimeBtn');
             const sendCountdownBtn = document.getElementById('sendCountdownBtn');
+            const realtimeMessage = document.getElementById('realtimeMessage');
+            const countdownMessage = document.getElementById('countdownMessage');
 
             try {
                 const response = await fetch(`${ESP_IP}/getTime`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': 'Basic ' + btoa(`${NGROK_USERNAME}:${NGROK_PASSWORD}`)
-                    }
+                    method: 'GET'
                 });
                 if (response.ok) {
                     const data = await response.json();
@@ -315,6 +318,8 @@
                     statusText.classList.add('status-connected');
                     sendRealTimeBtn.disabled = false;
                     sendCountdownBtn.disabled = false;
+                    realtimeMessage.innerHTML = 'Connect thành công Ngrok';
+                    countdownMessage.innerHTML = 'Connect thành công Ngrok';
                     syncTime(); // Sync time after connecting
                 } else {
                     throw new Error('Failed to connect: ' + response.statusText);
@@ -326,7 +331,8 @@
                 statusText.classList.add('status-disconnected');
                 sendRealTimeBtn.disabled = true;
                 sendCountdownBtn.disabled = true;
-                document.getElementById('realtimeError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel hoặc thông tin xác thực.';
+                document.getElementById('realtimeError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel.';
+                document.getElementById('countdownError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel.';
                 console.error('Error connecting:', error);
             }
         }
@@ -335,6 +341,8 @@
             const statusText = document.getElementById('connectionStatus');
             const sendRealTimeBtn = document.getElementById('sendRealTimeBtn');
             const sendCountdownBtn = document.getElementById('sendCountdownBtn');
+            const realtimeMessage = document.getElementById('realtimeMessage');
+            const countdownMessage = document.getElementById('countdownMessage');
 
             isConnected = false;
             statusText.textContent = 'Disconnected';
@@ -342,6 +350,8 @@
             statusText.classList.add('status-disconnected');
             sendRealTimeBtn.disabled = true;
             sendCountdownBtn.disabled = true;
+            realtimeMessage.innerHTML = '';
+            countdownMessage.innerHTML = '';
             document.getElementById('realtimeError').innerHTML = 'Đã ngắt kết nối. Vui lòng kết nối lại để gửi dữ liệu.';
             document.getElementById('countdownError').innerHTML = 'Đã ngắt kết nối. Vui lòng kết nối lại để gửi dữ liệu.';
         }
@@ -360,10 +370,7 @@
         async function syncTime() {
             try {
                 const response = await fetch(`${ESP_IP}/getTime`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': 'Basic ' + btoa(`${NGROK_USERNAME}:${NGROK_PASSWORD}`)
-                    }
+                    method: 'GET'
                 });
                 const data = await response.json();
                 const rtcTime = new Date(data.time);
@@ -384,8 +391,10 @@
 
             const spinner = document.getElementById('realtimeSpinner');
             const errorDiv = document.getElementById('realtimeError');
+            const messageDiv = document.getElementById('realtimeMessage');
             spinner.style.display = 'block';
             errorDiv.innerHTML = '';
+            messageDiv.innerHTML = '';
             const now = new Date();
             const data = {
                 mode: 'realtime',
@@ -397,8 +406,7 @@
                 const response = await fetch(`${ESP_IP}/update`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Basic ' + btoa(`${NGROK_USERNAME}:${NGROK_PASSWORD}`)
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(data)
                 });
@@ -457,8 +465,10 @@
 
             const spinner = document.getElementById('countdownSpinner');
             const errorDiv = document.getElementById('countdownError');
+            const messageDiv = document.getElementById('countdownMessage');
             spinner.style.display = 'block';
             errorDiv.innerHTML = '';
+            messageDiv.innerHTML = '';
             const targetInput = document.getElementById('targetDateTime').value;
             if (!targetInput) {
                 errorDiv.innerHTML = 'Vui lòng chọn thời gian đích.';
@@ -483,8 +493,7 @@
                 const response = await fetch(`${ESP_IP}/update`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Basic ' + btoa(`${NGROK_USERNAME}:${NGROK_PASSWORD}`)
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(data)
                 });
