@@ -1,420 +1,134 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP8266 RTC LED Matrix Control</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            overflow-x: hidden;
-            position: relative;
-        }
-        #particles-js {
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #1e3a8a, #7c3aed);
-            z-index: -1;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            position: relative;
-            z-index: 1;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        .header h1 {
-            font-size: 3.5rem;
-            font-weight: 900;
-            background: linear-gradient(90deg, #60a5fa, #a855f7);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 15px rgba(96, 165, 250, 0.5);
-        }
-        .tabs {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-        .tab {
-            cursor: pointer;
-            padding: 12px 24px;
-            border-radius: 20px;
-            background: linear-gradient(90deg, #60a5fa, #3b82f6);
-            color: white;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-        .tab:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-        }
-        .tab.active {
-            background: linear-gradient(90deg, #a855f7, #7c3aed);
-            transform: scale(1.05);
-            box-shadow: 0 8px 20px rgba(168, 85, 247, 0.5);
-        }
-        .section {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            margin-bottom: 20px;
-        }
-        .time-display, .countdown-display {
-            font-family: monospace;
-            font-size: 2.5rem;
-            color: #1e3a8a;
-            text-align: center;
-            margin: 20px 0;
-        }
-        .blinking {
-            animation: blink 1s step-end infinite;
-        }
-        @keyframes blink {
-            50% { opacity: 0; }
-        }
-        .spinner {
-            border: 4px solid #f3f4f6;
-            border-top: 4px solid #a855f7;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-            display: none;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .error-message {
-            color: #ef4444;
-            font-size: 0.875rem;
-            margin-top: 10px;
-            text-align: center;
-        }
-        .success-message {
-            color: #22c55e;
-            font-size: 0.875rem;
-            margin-top: 10px;
-            text-align: center;
-        }
-        .send-btn {
-            transition: all 0.3s ease;
-            border-radius: 50px;
-            padding: 12px 24px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: linear-gradient(90deg, #60a5fa, #3b82f6);
-            color: white;
-        }
-        .send-btn:hover {
-            background: linear-gradient(90deg, #3b82f6, #2563eb);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.5);
-        }
-        .send-btn:disabled {
-            background: #d1d5db;
-            cursor: not-allowed;
-        }
-    </style>
-</head>
-<body>
-    <div id="particles-js"></div>
-    <div class="container">
-        <div class="header animate__animated animate__fadeInDown">
-            <h1>ESP8266 RTC LED Matrix Control</h1>
-        </div>
+/* Đảm bảo các thuộc tính cơ bản của tab */
+.tabs-container > .tab {
+  border-right: 0 !important;
+  position: relative; /* Cần thiết để quản lý z-index */
+  z-index: 1; /* Đảm bảo tab nằm trên các lớp khác */
+}
 
-        <!-- Tabs -->
-        <div class="tabs animate__animated animate__fadeIn">
-            <div class="tab" onclick="showTab('realtime')" id="realtimeTab">Real-Time Clock</div>
-            <div class="tab" onclick="showTab('countdown')" id="countdownTab">Countdown Timer</div>
-        </div>
+.tabs-and-actions-container {
+  padding: 4px !important;
+}
 
-        <!-- Real-Time Clock Section -->
-        <div id="realtimeSection" class="section animate__animated animate__fadeIn hidden">
-            <h2 class="text-2xl font-semibold text-center mb-4 text-white">Real-Time Clock</h2>
-            <div class="time-display" id="realTimeDisplay">00:00:00</div>
-            <div class="flex justify-center items-center mt-6">
-                <button onclick="sendRealTime()" class="send-btn">Send to LED Matrix</button>
-                <div id="realtimeSpinner" class="spinner ml-4"></div>
-            </div>
-            <div id="realtimeMessage" class="success-message"></div>
-            <div id="realtimeError" class="error-message"></div>
-        </div>
+.tabs-container {
+  gap: 8px !important;
+}
 
-        <!-- Countdown Timer Section -->
-        <div id="countdownSection" class="section animate__animated animate__fadeIn hidden">
-            <h2 class="text-2xl font-semibold text-center mb-4 text-white">Countdown Timer</h2>
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-200 mb-2 text-center">Select Target Date and Time</label>
-                <input type="datetime-local" id="targetDateTime" class="block w-1/2 mx-auto border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
-            </div>
-            <div class="countdown-display" id="countdownDisplay">00d 00h 00m 00s</div>
-            <div class="flex justify-center items-center mt-6">
-                <button onclick="sendCountdown()" class="send-btn">Send to LED Matrix</button>
-                <div id="countdownSpinner" class="spinner ml-4"></div>
-            </div>
-            <div id="countdownMessage" class="success-message"></div>
-            <div id="countdownError" class="error-message"></div>
-        </div>
-    </div>
+/* Xóa hiệu ứng gradient tĩnh và chuẩn bị cho hiệu ứng mới */
+.tabs-container > .tab.active.tab-border-top > .tab-border-top-container {
+  height: 0.5px !important;
+  width: 50% !important;
+  left: 50% !important;
+  transform: translate3d(-50%, 0%, 0) !important;
+  top: -1px !important;
+  background: none !important;
+}
 
-    <script>
-        // Initialize Particles.js
-        particlesJS('particles-js', {
-            particles: {
-                number: { value: 80, density: { enable: true, value_area: 800 } },
-                color: { value: '#ffffff' },
-                shape: {
-                    type: 'circle',
-                    stroke: { width: 0, color: '#000000' },
-                    polygon: { nb_sides: 5 }
-                },
-                opacity: {
-                    value: 0.5,
-                    random: false,
-                    anim: { enable: false, speed: 1, opacity_min: 0.1, sync: false }
-                },
-                size: {
-                    value: 3,
-                    random: true,
-                    anim: { enable: false, speed: 40, size_min: 0.1, sync: false }
-                },
-                line_linked: {
-                    enable: true,
-                    distance: 150,
-                    color: '#ffffff',
-                    opacity: 0.4,
-                    width: 1
-                },
-                move: {
-                    enable: true,
-                    speed: 6,
-                    direction: 'none',
-                    random: false,
-                    straight: false,
-                    out_mode: 'out',
-                    bounce: false,
-                    attract: { enable: false, rotateX: 600, rotateY: 1200 }
-                }
-            },
-            interactivity: {
-                detect_on: 'canvas',
-                events: {
-                    onhover: { enable: true, mode: 'repulse' },
-                    onclick: { enable: true, mode: 'push' },
-                    resize: true
-                },
-                modes: {
-                    grab: { distance: 400, line_linked: { opacity: 1 } },
-                    bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 },
-                    repulse: { distance: 200, duration: 0.4 },
-                    push: { particles_nb: 4 },
-                    remove: { particles_nb: 2 }
-                }
-            },
-            retina_detect: true
-        });
+/* Tùy chỉnh tab với hiệu ứng viền động */
+.tabs-container > .tab {
+  border-radius: 100px;
+  border: none !important;
+  background: rgba(25, 26, 33, 0.9); /* Nền tối nhẹ để nổi bật viền */
+}
 
-        // ESP8266 IP (thay bằng URL HTTPS từ Ngrok)
-        const ESP_IP = 'https://6f1c-2402-800-629c-bb3b-98e1-15d4-e366-a652.ngrok-free.app/'; // Thay bằng URL mới từ Ngrok
+/* Đảm bảo nội dung (tên file) rõ ràng */
+.tab-label {
+  position: relative;
+  z-index: 2; /* Đặt nội dung trên các lớp pseudo-elements */
+  color: #ffffff; /* Màu chữ trắng để đảm bảo rõ ràng */
+  transition: color 0.3s ease; /* Hiệu ứng chuyển màu chữ nhẹ nhàng */
+}
 
-        // Tab switching
-        function showTab(tab) {
-            const realtimeSection = document.getElementById('realtimeSection');
-            const countdownSection = document.getElementById('countdownSection');
-            const realtimeTab = document.getElementById('realtimeTab');
-            const countdownTab = document.getElementById('countdownTab');
+/* Khi hover, đảm bảo tên file không bị mờ */
+.tabs-container > .tab:hover .tab-label {
+  color: #ffffff; /* Giữ màu chữ trắng */
+}
 
-            if (tab === 'realtime') {
-                realtimeSection.classList.remove('hidden');
-                countdownSection.classList.add('hidden');
-                realtimeTab.classList.add('active');
-                countdownTab.classList.remove('active');
-                updateRealTime(); // Start real-time updates
-                clearInterval(countdownInterval);
-                syncTime(); // Sync time when switching to Real-Time tab
-            } else {
-                countdownSection.classList.remove('hidden');
-                realtimeSection.classList.add('hidden');
-                countdownTab.classList.add('active');
-                realtimeTab.classList.remove('active');
-                updateCountdown(); // Start countdown updates
-                clearInterval(realTimeInterval);
-            }
-        }
+/* Tạo viền gradient chuyển động với ánh sáng neon */
+.tabs-container > .tab::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 100px;
+  background: linear-gradient(
+    45deg,
+    #ffd700, /* Vàng */
+    #ff00ff, /* Hồng tím */
+    #00f2fe, /* Xanh lam */
+    #ffd700 /* Lặp lại vàng */
+  );
+  background-size: 300% 300%;
+  animation: gradientFlow 4s ease infinite;
+  filter: blur(5px);
+  z-index: -1;
+  transition: transform 0.3s ease; /* Hiệu ứng phóng to áp dụng lên pseudo-element */
+}
 
-        // Real-Time Clock
-        let realTimeInterval = null;
-        function updateRealTime() {
-            const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            const colon = seconds % 2 === 0 ? ':' : ' ';
-            document.getElementById('realTimeDisplay').innerHTML = `${hours}${colon}${minutes}:${seconds}`;
-        }
+/* Tạo viền chính với hiệu ứng chuyển động */
+.tabs-container > .tab::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 100px;
+  padding: 2px;
+  background: linear-gradient(
+    45deg,
+    #ffd700,
+    #ff00ff,
+    #00f2fe,
+    #ffd700
+  );
+  background-size: 300% 300%;
+  animation: gradientFlow 4s ease infinite;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  transition: transform 0.3s ease; /* Hiệu ứng phóng to áp dụng lên pseudo-element */
+}
 
-        async function syncTime() {
-            try {
-                const response = await fetch(`${ESP_IP}/getTime`, {
-                    method: 'GET'
-                });
-                if (!response.ok) {
-                    throw new Error('Failed to sync time: ' + response.statusText);
-                }
-                const data = await response.json();
-                if (!data.time) {
-                    throw new Error('Invalid response format: Missing "time" field');
-                }
-                const rtcTime = new Date(data.time);
-                document.getElementById('realTimeDisplay').innerHTML = 
-                    `${String(rtcTime.getHours()).padStart(2, '0')}:${String(rtcTime.getMinutes()).padStart(2, '0')}:${String(rtcTime.getSeconds()).padStart(2, '0')}`;
-                document.getElementById('realtimeError').innerHTML = '';
-            } catch (error) {
-                document.getElementById('realtimeError').innerHTML = 'Không thể đồng bộ thời gian với ESP8266: ' + error.message;
-                console.error('Error syncing time:', error);
-            }
-        }
+/* Hiệu ứng hover: Phóng to pseudo-elements thay vì toàn bộ tab */
+.tabs-container > .tab:hover::before,
+.tabs-container > .tab:hover::after {
+  transform: scale(1.02); /* Phóng to viền và ánh sáng khi hover */
+}
 
-        async function sendRealTime() {
-            const spinner = document.getElementById('realtimeSpinner');
-            const errorDiv = document.getElementById('realtimeError');
-            const messageDiv = document.getElementById('realtimeMessage');
-            spinner.style.display = 'block';
-            errorDiv.innerHTML = '';
-            messageDiv.innerHTML = '';
-            const now = new Date();
-            const data = {
-                mode: 'realtime',
-                hours: now.getHours(),
-                minutes: now.getMinutes(),
-                seconds: now.getSeconds()
-            };
-            try {
-                const response = await fetch(`${ESP_IP}/update`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-                if (response.ok) {
-                    messageDiv.innerHTML = 'Gửi dữ liệu thời gian thực thành công!';
-                    syncTime(); // Sync after sending
-                } else {
-                    throw new Error('Failed to send data: ' + response.statusText);
-                }
-            } catch (error) {
-                errorDiv.innerHTML = 'Lỗi: Không thể gửi dữ liệu đến ESP8266 qua Ngrok: ' + error.message;
-                console.error('Error sending real-time data:', error);
-            } finally {
-                spinner.style.display = 'none';
-            }
-        }
+/* Animation cho gradient chuyển động */
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
 
-        // Countdown Timer
-        let countdownInterval = null;
-        function updateCountdown() {
-            const targetInput = document.getElementById('targetDateTime').value;
-            if (!targetInput) {
-                document.getElementById('countdownDisplay').innerHTML = 'Chọn thời gian đích';
-                return;
-            }
+/* Hiệu ứng cho tab đang chọn */
+.tabs-container > .tab.active::after {
+  padding: 3px;
+  animation: gradientFlow 4s ease infinite, pulseGlow 1.5s ease-in-out infinite;
+}
 
-            const target = new Date(targetInput).getTime();
-            const now = new Date().getTime();
-            const distance = target - now;
+/* Hiệu ứng nhấp nháy ánh sáng */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 0, 255, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 0, 255, 0.8);
+  }
+}
 
-            if (distance < 0) {
-                document.getElementById('countdownDisplay').innerHTML = 'Đếm ngược đã kết thúc!';
-                clearInterval(countdownInterval);
-                return;
-            }
+/* Thêm hiệu ứng ánh sáng phía dưới tab đang chọn */
+.tabs-container > .tab.active {
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
 
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            document.getElementById('countdownDisplay').innerHTML = 
-                `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
-        }
-
-        document.getElementById('targetDateTime').addEventListener('change', () => {
-            clearInterval(countdownInterval);
-            countdownInterval = setInterval(updateCountdown, 1000);
-            updateCountdown();
-        });
-
-        async function sendCountdown() {
-            const spinner = document.getElementById('countdownSpinner');
-            const errorDiv = document.getElementById('countdownError');
-            const messageDiv = document.getElementById('countdownMessage');
-            spinner.style.display = 'block';
-            errorDiv.innerHTML = '';
-            messageDiv.innerHTML = '';
-            const targetInput = document.getElementById('targetDateTime').value;
-            if (!targetInput) {
-                errorDiv.innerHTML = 'Vui lòng chọn thời gian đích.';
-                spinner.style.display = 'none';
-                return;
-            }
-            const target = new Date(targetInput);
-            if (target <= new Date()) {
-                errorDiv.innerHTML = 'Vui lòng chọn thời gian trong tương lai.';
-                spinner.style.display = 'none';
-                return;
-            }
-            const data = {
-                mode: 'countdown',
-                year: target.getFullYear(),
-                month: target.getMonth() + 1,
-                day: target.getDate(),
-                hours: target.getHours(),
-                minutes: target.getMinutes()
-            };
-            try {
-                const response = await fetch(`${ESP_IP}/update`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-                if (response.ok) {
-                    messageDiv.innerHTML = 'Gửi dữ liệu đếm ngược thành công!';
-                } else {
-                    throw new Error('Failed to send data: ' + response.statusText);
-                }
-            } catch (error) {
-                errorDiv.innerHTML = 'Lỗi: Không thể gửi dữ liệu đến ESP8266 qua Ngrok: ' + error.message;
-                console.error('Error sending countdown data:', error);
-            } finally {
-                spinner.style.display = 'none';
-            }
-        }
-
-        // Initialize
-        showTab('realtime');
-        realTimeInterval = setInterval(updateRealTime, 1000);
-    </script>
-</body>
-</html>
+/* Hiệu ứng khi hover lên tab đang chọn */
+.tabs-container > .tab.active:hover::before,
+.tabs-container > .tab.active:hover::after {
+  transform: scale(1.05); /* Phóng to lớn hơn cho tab đang chọn */
+}
