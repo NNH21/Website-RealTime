@@ -6,29 +6,89 @@
     <title>ESP8266 RTC LED Matrix Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <style>
         body {
-            background-color: #f3f4f6;
             font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+            position: relative;
+        }
+        #particles-js {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1e3a8a, #7c3aed);
+            z-index: -1;
         }
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #60a5fa, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        .connection-status {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .status-text {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .status-connected {
+            color: #22c55e;
+        }
+        .status-disconnected {
+            color: #ef4444;
         }
         .tab {
             cursor: pointer;
             transition: all 0.3s ease;
+            padding: 12px 24px;
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-weight: 600;
+        }
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
         }
         .tab.active {
-            background-color: #3b82f6;
+            background: #a855f7;
             color: white;
             transform: scale(1.05);
+        }
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px;
         }
         .time-display, .countdown-display {
             font-family: monospace;
             font-size: 2.5rem;
-            color: #1f2937;
+            color: #1e3a8a;
+            text-align: center;
+            margin: 20px 0;
         }
         .blinking {
             animation: blink 1s step-end infinite;
@@ -38,7 +98,7 @@
         }
         .spinner {
             border: 4px solid #f3f4f6;
-            border-top: 4px solid #3b82f6;
+            border-top: 4px solid #a855f7;
             border-radius: 50%;
             width: 24px;
             height: 24px;
@@ -50,43 +110,91 @@
             100% { transform: rotate(360deg); }
         }
         .error-message {
-            color: #dc2626;
+            color: #ef4444;
             font-size: 0.875rem;
-            margin-top: 0.5rem;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .connect-btn, .disconnect-btn, .send-btn {
+            transition: all 0.3s ease;
+            border-radius: 50px;
+            padding: 12px 24px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .connect-btn {
+            background: linear-gradient(90deg, #22c55e, #16a34a);
+            color: white;
+        }
+        .connect-btn:hover {
+            background: linear-gradient(90deg, #16a34a, #15803d);
+            transform: translateY(-2px);
+        }
+        .disconnect-btn {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+            color: white;
+        }
+        .disconnect-btn:hover {
+            background: linear-gradient(90deg, #dc2626, #b91c1c);
+            transform: translateY(-2px);
+        }
+        .send-btn {
+            background: linear-gradient(90deg, #60a5fa, #3b82f6);
+            color: white;
+        }
+        .send-btn:hover {
+            background: linear-gradient(90deg, #3b82f6, #2563eb);
+            transform: translateY(-2px);
+        }
+        .send-btn:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
         }
     </style>
 </head>
 <body>
-    <div class="container mx-auto p-4">
-        <h1 class="text-4xl font-bold text-center mb-8 animate__animated animate__fadeIn">ESP8266 RTC LED Matrix Control</h1>
+    <div id="particles-js"></div>
+    <div class="container">
+        <div class="header animate__animated animate__fadeInDown">
+            <h1>ESP8266 RTC LED Matrix Control</h1>
+        </div>
+
+        <!-- Connection Status and Buttons -->
+        <div class="connection-status animate__animated animate__fadeIn">
+            <button onclick="connectNgrok()" class="connect-btn">Connect Ngrok</button>
+            <button onclick="disconnectNgrok()" class="disconnect-btn">Disconnect Ngrok</button>
+            <span class="status-text status-disconnected" id="connectionStatus">Disconnected</span>
+        </div>
 
         <!-- Tabs -->
-        <div class="flex justify-center mb-6">
-            <div class="tab bg-gray-200 px-6 py-3 rounded-l-lg text-lg font-semibold" onclick="showTab('realtime')" id="realtimeTab">Real-Time Clock</div>
-            <div class="tab bg-gray-200 px-6 py-3 rounded-r-lg text-lg font-semibold" onclick="showTab('countdown')" id="countdownTab">Countdown Timer</div>
+        <div class="flex justify-center mb-8 animate__animated animate__fadeIn">
+            <div class="tab mr-4" onclick="showTab('realtime')" id="realtimeTab">Real-Time Clock</div>
+            <div class="tab" onclick="showTab('countdown')" id="countdownTab">Countdown Timer</div>
         </div>
 
         <!-- Real-Time Clock Section -->
-        <div id="realtimeSection" class="bg-white p-8 rounded-lg shadow-lg mb-6 animate__animated animate__fadeIn hidden">
-            <h2 class="text-2xl font-semibold mb-4">Real-Time Clock</h2>
+        <div id="realtimeSection" class="section animate__animated animate__fadeIn hidden">
+            <h2 class="text-2xl font-semibold text-center mb-4">Real-Time Clock</h2>
             <div class="time-display" id="realTimeDisplay">00:00:00</div>
-            <div class="flex items-center mt-6">
-                <button onclick="sendRealTime()" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition transform hover:scale-105">Send to LED Matrix</button>
+            <div class="flex justify-center items-center mt-6">
+                <button onclick="sendRealTime()" class="send-btn" id="sendRealTimeBtn" disabled>Send to LED Matrix</button>
                 <div id="realtimeSpinner" class="spinner ml-4"></div>
             </div>
             <div id="realtimeError" class="error-message"></div>
         </div>
 
         <!-- Countdown Timer Section -->
-        <div id="countdownSection" class="bg-white p-8 rounded-lg shadow-lg mb-6 animate__animated animate__fadeIn hidden">
-            <h2 class="text-2xl font-semibold mb-4">Countdown Timer</h2>
+        <div id="countdownSection" class="section animate__animated animate__fadeIn hidden">
+            <h2 class="text-2xl font-semibold text-center mb-4">Countdown Timer</h2>
             <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Select Target Date and Time</label>
-                <input type="datetime-local" id="targetDateTime" class="block w-full border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                <label class="block text-sm font-medium text-gray-700 mb-2 text-center">Select Target Date and Time</label>
+                <input type="datetime-local" id="targetDateTime" class="block w-1/2 mx-auto border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
             <div class="countdown-display" id="countdownDisplay">00d 00h 00m 00s</div>
-            <div class="flex items-center mt-6">
-                <button onclick="sendCountdown()" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition transform hover:scale-105">Send to LED Matrix</button>
+            <div class="flex justify-center items-center mt-6">
+                <button onclick="sendCountdown()" class="send-btn" id="sendCountdownBtn" disabled>Send to LED Matrix</button>
                 <div id="countdownSpinner" class="spinner ml-4"></div>
             </div>
             <div id="countdownError" class="error-message"></div>
@@ -94,8 +202,66 @@
     </div>
 
     <script>
+        // Initialize Particles.js
+        particlesJS('particles-js', {
+            particles: {
+                number: { value: 80, density: { enable: true, value_area: 800 } },
+                color: { value: '#ffffff' },
+                shape: {
+                    type: 'circle',
+                    stroke: { width: 0, color: '#000000' },
+                    polygon: { nb_sides: 5 }
+                },
+                opacity: {
+                    value: 0.5,
+                    random: false,
+                    anim: { enable: false, speed: 1, opacity_min: 0.1, sync: false }
+                },
+                size: {
+                    value: 3,
+                    random: true,
+                    anim: { enable: false, speed: 40, size_min: 0.1, sync: false }
+                },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: '#ffffff',
+                    opacity: 0.4,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 6,
+                    direction: 'none',
+                    random: false,
+                    straight: false,
+                    out_mode: 'out',
+                    bounce: false,
+                    attract: { enable: false, rotateX: 600, rotateY: 1200 }
+                }
+            },
+            interactivity: {
+                detect_on: 'canvas',
+                events: {
+                    onhover: { enable: true, mode: 'repulse' },
+                    onclick: { enable: true, mode: 'push' },
+                    resize: true
+                },
+                modes: {
+                    grab: { distance: 400, line_linked: { opacity: 1 } },
+                    bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 },
+                    repulse: { distance: 200, duration: 0.4 },
+                    push: { particles_nb: 4 },
+                    remove: { particles_nb: 2 }
+                }
+            },
+            retina_detect: true
+        });
+
         // ESP8266 IP (thay bằng URL HTTPS từ Ngrok)
         const ESP_IP = 'https://3fe0-2402-800-629c-bb3b-98e1-15d4-e366-a652.ngrok-free.app/'; // Thay bằng URL của bạn
+
+        let isConnected = false;
 
         // Tab switching
         function showTab(tab) {
@@ -121,6 +287,51 @@
             }
         }
 
+        // Connection Management
+        async function connectNgrok() {
+            const statusText = document.getElementById('connectionStatus');
+            const sendRealTimeBtn = document.getElementById('sendRealTimeBtn');
+            const sendCountdownBtn = document.getElementById('sendCountdownBtn');
+
+            try {
+                const response = await fetch(`${ESP_IP}/getTime`, { method: 'GET' });
+                if (response.ok) {
+                    isConnected = true;
+                    statusText.textContent = 'Connected';
+                    statusText.classList.remove('status-disconnected');
+                    statusText.classList.add('status-connected');
+                    sendRealTimeBtn.disabled = false;
+                    sendCountdownBtn.disabled = false;
+                    syncTime(); // Sync time after connecting
+                } else {
+                    throw new Error('Failed to connect');
+                }
+            } catch (error) {
+                isConnected = false;
+                statusText.textContent = 'Disconnected';
+                statusText.classList.remove('status-connected');
+                statusText.classList.add('status-disconnected');
+                sendRealTimeBtn.disabled = true;
+                sendCountdownBtn.disabled = true;
+                document.getElementById('realtimeError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel.';
+            }
+        }
+
+        function disconnectNgrok() {
+            const statusText = document.getElementById('connectionStatus');
+            const sendRealTimeBtn = document.getElementById('sendRealTimeBtn');
+            const sendCountdownBtn = document.getElementById('sendCountdownBtn');
+
+            isConnected = false;
+            statusText.textContent = 'Disconnected';
+            statusText.classList.remove('status-connected');
+            statusText.classList.add('status-disconnected');
+            sendRealTimeBtn.disabled = true;
+            sendCountdownBtn.disabled = true;
+            document.getElementById('realtimeError').innerHTML = 'Đã ngắt kết nối. Vui lòng kết nối lại để gửi dữ liệu.';
+            document.getElementById('countdownError').innerHTML = 'Đã ngắt kết nối. Vui lòng kết nối lại để gửi dữ liệu.';
+        }
+
         // Real-Time Clock
         let realTimeInterval = null;
         function updateRealTime() {
@@ -132,7 +343,6 @@
             document.getElementById('realTimeDisplay').innerHTML = `${hours}${colon}${minutes}:${seconds}`;
         }
 
-        // Sync RTC time on page load
         async function syncTime() {
             try {
                 const response = await fetch(`${ESP_IP}/getTime`);
@@ -142,13 +352,17 @@
                     `${String(rtcTime.getHours()).padStart(2, '0')}:${String(rtcTime.getMinutes()).padStart(2, '0')}:${String(rtcTime.getSeconds()).padStart(2, '0')}`;
                 document.getElementById('realtimeError').innerHTML = '';
             } catch (error) {
-                document.getElementById('realtimeError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel.';
+                document.getElementById('realtimeError').innerHTML = 'Không thể đồng bộ thời gian với ESP8266.';
                 console.error('Error syncing time:', error);
             }
         }
 
-        // Send real-time data
         async function sendRealTime() {
+            if (!isConnected) {
+                document.getElementById('realtimeError').innerHTML = 'Vui lòng kết nối với Ngrok trước khi gửi dữ liệu.';
+                return;
+            }
+
             const spinner = document.getElementById('realtimeSpinner');
             const errorDiv = document.getElementById('realtimeError');
             spinner.style.display = 'block';
@@ -207,15 +421,18 @@
                 `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
         }
 
-        // Start countdown on input change
         document.getElementById('targetDateTime').addEventListener('change', () => {
             clearInterval(countdownInterval);
             countdownInterval = setInterval(updateCountdown, 1000);
             updateCountdown();
         });
 
-        // Send countdown data
         async function sendCountdown() {
+            if (!isConnected) {
+                document.getElementById('countdownError').innerHTML = 'Vui lòng kết nối với Ngrok trước khi gửi dữ liệu.';
+                return;
+            }
+
             const spinner = document.getElementById('countdownSpinner');
             const errorDiv = document.getElementById('countdownError');
             spinner.style.display = 'block';
@@ -261,7 +478,6 @@
         // Initialize
         showTab('realtime');
         realTimeInterval = setInterval(updateRealTime, 1000);
-        syncTime();
     </script>
 </body>
 </html>
