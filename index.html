@@ -49,6 +49,11 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .error-message {
+            color: #dc2626;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -69,6 +74,7 @@
                 <button onclick="sendRealTime()" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition transform hover:scale-105">Send to LED Matrix</button>
                 <div id="realtimeSpinner" class="spinner ml-4"></div>
             </div>
+            <div id="realtimeError" class="error-message"></div>
         </div>
 
         <!-- Countdown Timer Section -->
@@ -83,12 +89,13 @@
                 <button onclick="sendCountdown()" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition transform hover:scale-105">Send to LED Matrix</button>
                 <div id="countdownSpinner" class="spinner ml-4"></div>
             </div>
+            <div id="countdownError" class="error-message"></div>
         </div>
     </div>
 
     <script>
-        // ESP8266 IP (update if using Wi-Fi instead of AP)
-        const ESP_IP = 'http://192.168.4.1';
+        // ESP8266 IP (thay bằng URL HTTPS từ Ngrok)
+        const ESP_IP = 'https://3fe0-2402-800-629c-bb3b-98e1-15d4-e366-a652.ngrok-free.app/'; // Thay bằng URL của bạn
 
         // Tab switching
         function showTab(tab) {
@@ -133,7 +140,9 @@
                 const rtcTime = new Date(data.time);
                 document.getElementById('realTimeDisplay').innerHTML = 
                     `${String(rtcTime.getHours()).padStart(2, '0')}:${String(rtcTime.getMinutes()).padStart(2, '0')}:${String(rtcTime.getSeconds()).padStart(2, '0')}`;
+                document.getElementById('realtimeError').innerHTML = '';
             } catch (error) {
+                document.getElementById('realtimeError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel.';
                 console.error('Error syncing time:', error);
             }
         }
@@ -141,7 +150,9 @@
         // Send real-time data
         async function sendRealTime() {
             const spinner = document.getElementById('realtimeSpinner');
+            const errorDiv = document.getElementById('realtimeError');
             spinner.style.display = 'block';
+            errorDiv.innerHTML = '';
             const now = new Date();
             const data = {
                 mode: 'realtime',
@@ -156,13 +167,13 @@
                     body: JSON.stringify(data)
                 });
                 if (response.ok) {
-                    alert('Real-time data sent successfully!');
+                    alert('Dữ liệu thời gian thực đã được gửi thành công!');
                     syncTime(); // Sync after sending
                 } else {
-                    alert('Failed to send data.');
+                    errorDiv.innerHTML = 'Không thể gửi dữ liệu. Vui lòng thử lại.';
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
+                errorDiv.innerHTML = 'Lỗi: Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel.';
             } finally {
                 spinner.style.display = 'none';
             }
@@ -173,7 +184,7 @@
         function updateCountdown() {
             const targetInput = document.getElementById('targetDateTime').value;
             if (!targetInput) {
-                document.getElementById('countdownDisplay').innerHTML = 'Select a target time';
+                document.getElementById('countdownDisplay').innerHTML = 'Chọn thời gian đích';
                 return;
             }
 
@@ -182,7 +193,7 @@
             const distance = target - now;
 
             if (distance < 0) {
-                document.getElementById('countdownDisplay').innerHTML = 'Countdown finished!';
+                document.getElementById('countdownDisplay').innerHTML = 'Đếm ngược đã kết thúc!';
                 clearInterval(countdownInterval);
                 return;
             }
@@ -206,16 +217,18 @@
         // Send countdown data
         async function sendCountdown() {
             const spinner = document.getElementById('countdownSpinner');
+            const errorDiv = document.getElementById('countdownError');
             spinner.style.display = 'block';
+            errorDiv.innerHTML = '';
             const targetInput = document.getElementById('targetDateTime').value;
             if (!targetInput) {
-                alert('Please select a target date and time.');
+                errorDiv.innerHTML = 'Vui lòng chọn thời gian đích.';
                 spinner.style.display = 'none';
                 return;
             }
             const target = new Date(targetInput);
             if (target <= new Date()) {
-                alert('Please select a future date and time.');
+                errorDiv.innerHTML = 'Vui lòng chọn thời gian trong tương lai.';
                 spinner.style.display = 'none';
                 return;
             }
@@ -234,12 +247,12 @@
                     body: JSON.stringify(data)
                 });
                 if (response.ok) {
-                    alert('Countdown data sent successfully!');
+                    alert('Dữ liệu đếm ngược đã được gửi thành công!');
                 } else {
-                    alert('Failed to send data.');
+                    errorDiv.innerHTML = 'Không thể gửi dữ liệu. Vui lòng thử lại.';
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
+                errorDiv.innerHTML = 'Lỗi: Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel.';
             } finally {
                 spinner.style.display = 'none';
             }
