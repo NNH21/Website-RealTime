@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP8266 RTC LED Matrix Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .time-display, .countdown-display {
+            font-family: monospace;
+            font-size: 2rem;
+            color: #1f2937;
+        }
+        .blinking {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold text-center mb-6">ESP8266 RTC LED Matrix Control</h1>
+
+        <!-- Real-Time Clock Section -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-2xl font-semibold mb-4">Real-Time Clock</h2>
+            <div class="time-display" id="realTimeDisplay">00:00:00</div>
+            <button onclick="sendRealTime()" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Send to LED Matrix</button>
+        </div>
+
+        <!-- Countdown Timer Section -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-4">Countdown Timer</h2>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Target Date and Time</label>
+                <input type="datetime-local" id="targetDateTime" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            </div>
+            <div class="countdown-display" id="countdownDisplay">00d 00h 00m 00s</div>
+            <button onclick="sendCountdown()" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Send to LED Matrix</button>
+        </div>
+    </div>
+
+    <script>
+        // Update real-time clock every second
+        function updateRealTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const colon = seconds % 2 === 0 ? ':' : ' ';
+            document.getElementById('realTimeDisplay').innerHTML = `${hours}${colon}${minutes}:${seconds}`;
+        }
+        setInterval(updateRealTime, 1000);
+        updateRealTime();
+
+        // Send real-time data to ESP8266
+        async function sendRealTime() {
+            const now = new Date();
+            const data = {
+                mode: 'realtime',
+                hours: now.getHours(),
+                minutes: now.getMinutes(),
+                seconds: now.getSeconds()
+            };
+            try {
+                const response = await fetch('http://192.168.4.1/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) alert('Real-time data sent successfully!');
+                else alert('Failed to send data.');
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Update countdown display
+        let countdownInterval = null;
+        function updateCountdown() {
+            const targetInput = document.getElementById('targetDateTime').value;
+            if (!targetInput) return;
+
+            const target = new Date(targetInput).getTime();
+            const now = new Date().getTime();
+            const distance = target - now;
+
+            if (distance < 0) {
+                document.getElementById('countdownDisplay').innerHTML = 'Countdown finished!';
+                clearInterval(countdownInterval);
+                return;
+            }
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById('countdownDisplay').innerHTML = 
+                `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+        }
+
+        // Start countdown when target date is set
+        document.getElementById('targetDateTime').addEventListener('change', () => {
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(updateCountdown, 1000);
+            updateCountdown();
+        });
+
+        // Send countdown data to ESP8266
+        async function sendCountdown() {
+            const targetInput = document.getElementById('targetDateTime').value;
+            if (!targetInput) {
+                alert('Please select a target date and time.');
+                return;
+            }
+            const target = new Date(targetInput);
+            const data = {
+                mode: 'countdown',
+                year: target.getFullYear(),
+                month: target.getMonth() + 1,
+                day: target.getDate(),
+                hours: target.getHours(),
+                minutes: target.getMinutes()
+            };
+            try {
+                const response = await fetch('http://192.168.4.1/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) alert('Countdown data sent successfully!');
+                else alert('Failed to send data.');
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
