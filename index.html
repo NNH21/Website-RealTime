@@ -259,11 +259,11 @@
         });
 
         // ESP8266 IP (thay bằng URL HTTPS từ Ngrok)
-        const ESP_IP = 'https://96b4-2402-800-629c-bb3b-98e1-15d4-e366-a652.ngrok-free.app/'; // Thay bằng URL của bạn
+        const ESP_IP = 'https://996e-2402-800-629c-bb3b-98e1-15d4-e366-a652.ngrok-free.app/'; // Thay bằng URL mới từ Ngrok
 
-        // Thông tin xác thực Basic Auth (nếu có)
-        const NGROK_USERNAME = 'user'; // Thay bằng username của bạn
-        const NGROK_PASSWORD = 'pass123'; // Thay bằng password của bạn
+        // Thông tin xác thực Basic Auth
+        const NGROK_USERNAME = 'user';
+        const NGROK_PASSWORD = 'password123'; // Cập nhật mật khẩu mới
 
         let isConnected = false;
 
@@ -306,6 +306,9 @@
                 });
                 if (response.ok) {
                     const data = await response.json();
+                    if (!data.time) {
+                        throw new Error('Invalid response format');
+                    }
                     isConnected = true;
                     statusText.textContent = 'Connected';
                     statusText.classList.remove('status-disconnected');
@@ -314,7 +317,7 @@
                     sendCountdownBtn.disabled = false;
                     syncTime(); // Sync time after connecting
                 } else {
-                    throw new Error('Failed to connect');
+                    throw new Error('Failed to connect: ' + response.statusText);
                 }
             } catch (error) {
                 isConnected = false;
@@ -323,7 +326,7 @@
                 statusText.classList.add('status-disconnected');
                 sendRealTimeBtn.disabled = true;
                 sendCountdownBtn.disabled = true;
-                document.getElementById('realtimeError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel.';
+                document.getElementById('realtimeError').innerHTML = 'Không thể kết nối với ESP8266 qua Ngrok. Vui lòng kiểm tra Ngrok tunnel hoặc thông tin xác thực.';
                 console.error('Error connecting:', error);
             }
         }
