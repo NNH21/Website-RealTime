@@ -201,6 +201,13 @@
             }
 
             try {
+                const now = new Date();
+                const diff = target - now;
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
                 const response = await fetch(`${ESP_IP}/update`, {
                     method: 'POST',
                     headers: {
@@ -212,7 +219,11 @@
                         month: target.getMonth() + 1,
                         day: target.getDate(),
                         hours: target.getHours(),
-                        minutes: target.getMinutes()
+                        minutes: target.getMinutes(),
+                        current_days: days,
+                        current_hours: hours,
+                        current_minutes: minutes,
+                        current_seconds: seconds
                     })
                 });
 
@@ -243,7 +254,7 @@
                 const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
                 document.getElementById('countdownDisplay').textContent = 
-                    `${days}d ${hours}h ${minutes}m ${seconds}s`;
+                    `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
             }, 1000);
         }
 
